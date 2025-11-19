@@ -61,7 +61,8 @@ public class StorageService {
         try (BufferedWriter bw = Files.newBufferedWriter(outPath, StandardCharsets.UTF_8,
                 StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
             if (!existed) {
-                bw.write("# Transactions file v1 | columns: timestampMillis | plate | type | entryHuman | exitHuman | amount | method | reference");
+                // Header with pipe-separated columns (exact format requested)
+                bw.write("timestampMillis | plate | type | entryHuman | exitHuman | amount | method | reference");
                 bw.newLine();
             }
             bw.write(line);

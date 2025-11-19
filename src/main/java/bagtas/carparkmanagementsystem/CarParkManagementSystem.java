@@ -11,9 +11,6 @@ package bagtas.carparkmanagementsystem;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -740,12 +737,12 @@ public class CarParkManagementSystem {
 
             Path vehiclesPath = dataDir.resolve("vehicles.txt");
             try (BufferedWriter bw = Files.newBufferedWriter(vehiclesPath, StandardCharsets.UTF_8)) {
-                // Write CSV header for clarity and better editor rendering
-                bw.write("plate,type,height,engineCc,pwd");
+                // Write documented header (pipe-delimited) per user preference
+                bw.write("Plate | Type | Height | EngineCc | PWD");
                 bw.newLine();
-                // Simple CSV line format: plate,type,height,engineCc,pwd
+                // Simple pipe-delimited line format: plate | type | height | engineCc | pwd
                 for (VehicleRecord r : registry.values()) {
-                    String line = String.format("%s,%s,%.2f,%d,%s",
+                    String line = String.format("%s | %s | %.2f | %d | %s",
                         r.plate,
                         safeForFile(r.type),
                         r.height,
