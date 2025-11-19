@@ -33,6 +33,8 @@ public class CarParkManagementSystem {
     private final Map<String, VehicleRecord> registry = new LinkedHashMap<>();
     private final ParkingLot parkingLot = new ParkingLot();
     private final BillingService billingService = new BillingService();
+    // Stores vehicles that have been pulled-out but not yet paid by plate
+    private final Map<String, PendingExit> pendingExits = new LinkedHashMap<>();
 
     // Simple text storage service (writes transaction lines)
     private final StorageService storageService = new StorageService("data/transactions.txt");
@@ -94,155 +96,44 @@ public class CarParkManagementSystem {
             System.out.println();
             System.out.println("--- VEHICLE RECORDS ---");
             System.out.println("[1] - REGISTER VEHICLE");
-            System.out.println("[2] - DELETE VEHICLE");
-            System.out.println("[3] - BACK TO MENU");
-            System.out.print("Choose: ");
-            String opt = scanner.nextLine().trim();
-            switch (opt) {
-                case "1":
-                    registerVehicle();
-                    break;
-                case "2":
-                    deleteVehicle();
-                    break;
-                default:
+                System.out.println("PULL-OUT VEHICLE");
+                System.out.print("Enter plate number to pull out: ");
+                String plate = scanner.nextLine().trim();
+                if (plate.isEmpty()) {
+                    System.out.println("Plate cannot be empty.");
+                    pause();
                     return;
-            }
-        }
-    }
+                }
 
-    private void registerVehicle() {
-    System.out.println();
-    System.out.println("REGISTER VEHICLE");
-
-    System.out.print("Plate number (required): ");
-    String plate = scanner.nextLine().trim();
-    if (plate.isEmpty()) {
-        System.out.println("Plate number cannot be empty.");
-        pause();
-        return;
-    }
-    if (registry.containsKey(plate)) {
-        System.out.println("A vehicle with that plate is already registered.");
-        pause();
-        return;
-    }
-
-    System.out.print("Vehicle type (car/motorcycle/scooter/ev) [default: car]: ");
-    String type = scanner.nextLine().trim().toLowerCase();
-    if (type.isEmpty()) {
-        type = "car";
-    }
-
-    // Validate vehicle type input and handle domain error here
-    if (!"car".equals(type) && !"motorcycle".equals(type) && !"scooter".equals(type) && !"ev".equals(type)) {
-        System.err.println("Unsupported vehicle type: " + type);
-        pause();
-        return;
-    }
-
-    double height = 0.0;
-    System.out.print("Height in meters (optional - press Enter to skip): ");
-    String h = scanner.nextLine().trim();
-    if (!h.isEmpty()) {
-        height = parseDoubleOrDefault(h, 0.0);
-    }
-
-    // Validate height against parking lot's maximum clearance and handle error here
-    if (height > ParkingLot.DEFAULT_CLEARANCE_M) {
-        System.err.println("Height " + height + "m exceeds maximum allowed clearance of " + ParkingLot.DEFAULT_CLEARANCE_M + "m");
-        pause();
-        return;
-    }
-
-    int engineCc = 0;
-    if ("motorcycle".equals(type) || "scooter".equals(type)) {
-        System.out.print("Engine CC (press Enter for default 150): ");
-        String cc = scanner.nextLine().trim();
-        engineCc = parseIntOrDefault(cc, 150);
-    }
-
-    boolean isPwd = false;
-    System.out.print("Is driver PWD? (y/n, press Enter for n): ");
-    String pwd = scanner.nextLine().trim().toLowerCase();
-    if ("y".equals(pwd) || "yes".equals(pwd)) {
-        isPwd = true;
-    }
-
-    VehicleRecord record = new VehicleRecord(plate, type, height, engineCc, isPwd);
-    registry.put(plate, record);
-
-    System.out.println("Vehicle registered:");
-    System.out.println(record);
-    pause(); 
-    
-}
-
-
-    private void deleteVehicle() {
-        System.out.print("Enter plate to delete: ");
-        String plate = scanner.nextLine().trim();
-        if (!registry.containsKey(plate)) {
-            System.out.println("No such registered vehicle.");
-            pause();
-            return;
-        }
-        registry.remove(plate);
-        System.out.println("Vehicle deleted.");
-        pause();
-    }
-
-    private void parkingOperationsMenu() {
-        while (true) {
-            System.out.println();
-            System.out.println("--- PARKING OPERATIONS ---");
-            System.out.println("[1] - PARK VEHICLE");
-            System.out.println("[2] - PULL-OUT VEHICLE");
-            System.out.println("[3] - BACK TO MENU");
-            System.out.print("Choose: ");
-            String opt = scanner.nextLine().trim();
-            switch (opt) {
-                case "1":
-                    parkVehicleFlow();
-                    break;
-                case "2":
-                    pullOutVehicleFlow();
-                    break;
-                default:
+                ParkingSlot slot = parkingLot.findSlotByPlate(plate);
+                if (slot == null) {
+                    System.err.println("Vehicle not found in any slot.");
+                    pause();
                     return;
-            }
-        }
-    }
+                }
 
-    // now uses parkingLot.parkOrThrow to make allocation/duplicate errors explicit
-    private void parkVehicleFlow() {
-        System.out.println();
-        System.out.println("PARK VEHICLE");
-        System.out.print("Enter plate number (must be registered): ");
-        String plate = scanner.nextLine().trim();
-        if (!registry.containsKey(plate)) {
-            System.out.println("Plate not found in registry. Register first.");
-            pause();
-            return;
-        }
-        VehicleRecord rec = registry.get(plate);
+                Vehicle v = slot.getCurrentVehicle();
+                long entry = slot.getEntryTime();
+                System.out.println("Vehicle located in " + slot.getSlotType()
+                    + " on floor " + slot.getFloorNumber()
+                    + " slot #" + slot.getSlotNumber() + ".");
 
-        Vehicle v;
-        String type = rec.type.toLowerCase();
-        double height = rec.height > 0.0 ? rec.height : 0.0;
-        boolean pwd = rec.pwd;
+                System.out.print("Confirm pull-out (y/n): ");
+                String confirm = scanner.nextLine().trim().toLowerCase();
+                if (!"y".equals(confirm) && !"yes".equals(confirm)) {
+                    System.out.println("Pull-out cancelled.");
+                    pause();
+                    return;
+                }
 
-        if ("car".equals(type) || "ev".equals(type)) {
-            if ("ev".equals(type)) {
-                v = new Car(rec.plate, height, pwd) {
-                    @Override
-                    public String getType() { return "EV"; }
-                };
-            } else {
-                v = new Car(rec.plate, height, pwd);
-            }
-        } else {
-            int cc = rec.engineCc > 0 ? rec.engineCc : 150;
+                Vehicle removed = parkingLot.removeVehicleByPlate(plate);
+                if (removed == null) {
+                    System.err.println("Pull-out failed: vehicle could not be removed (not found or unexpected).");
+                } else {
+                    pendingExits.put(plate, new PendingExit(plate, v, entry));
+                    System.out.println("Vehicle successfully pulled out and slot freed. Use PAYMENT to complete the payment for this exit.");
+                }
+                pause();
             Motorcycle m = new Motorcycle(rec.plate, height > 0.0 ? height : 1.1, cc);
             m.setPwdDriver(rec.pwd);
             v = m;
@@ -293,7 +184,7 @@ public class CarParkManagementSystem {
 
     private void pullOutVehicleFlow() {
         System.out.println();
-        System.out.println("PULL-OUT VEHICLE (Exit from slot without billing)");
+        System.out.println("PULL-OUT VEHICLE");
         System.out.print("Enter plate number to pull out: ");
         String plate = scanner.nextLine().trim();
         if (plate.isEmpty()) {
@@ -309,24 +200,139 @@ public class CarParkManagementSystem {
             return;
         }
 
+        Vehicle v = slot.getCurrentVehicle();
+        long entry = slot.getEntryTime();
         System.out.println("Vehicle located in " + slot.getSlotType()
             + " on floor " + slot.getFloorNumber()
             + " slot #" + slot.getSlotNumber() + ".");
-        System.out.print("Confirm pull-out (y/n): ");
-        String confirm = scanner.nextLine().trim().toLowerCase();
-        if (!"y".equals(confirm) && !"yes".equals(confirm)) {
+
+        // Offer options: Pull-out without billing, Pay & pull-out, or Cancel
+        double feeNow = billingService.computeFee(v, entry, System.currentTimeMillis());
+        System.out.println(String.format("Computed fee if exiting now: %.2f (entry: %s)", feeNow, formatMillis(entry)));
+        System.out.println("Options: [1] Pull-out without billing  [2] Pay & pull-out  [3] Cancel");
+        System.out.print("Choose: ");
+        String opt = scanner.nextLine().trim();
+        if ("1".equals(opt)) {
+            // Confirm and remove without billing
+            System.out.print("Confirm pull-out without billing (y/n): ");
+            String c = scanner.nextLine().trim().toLowerCase();
+            if (!"y".equals(c) && !"yes".equals(c)) {
+                System.out.println("Pull-out cancelled.");
+                pause();
+                return;
+            }
+            // capture pending exit so operator can pay after pull-out
+            Vehicle removed = parkingLot.removeVehicleByPlate(plate);
+            if (removed == null) {
+                System.err.println("Pull-out failed: vehicle could not be removed (not found or unexpected).");
+            } else {
+                pendingExits.put(plate, new PendingExit(plate, v, entry));
+                System.out.println("Vehicle successfully pulled out and slot freed. Marked as pending exit for payment.");
+            }
+            pause();
+            return;
+        } else if ("2".equals(opt)) {
+            // Process payment then remove
+            System.out.print("Payment method (CASH/CARD): ");
+            String method = scanner.nextLine().trim().toUpperCase();
+            Payment payment = null;
+            try {
+                if ("CASH".equals(method)) {
+                    System.out.print("Cash given: ");
+                    String cashS = scanner.nextLine().trim();
+                    double cashGiven = parseDoubleOrDefault(cashS, -1.0);
+                    if (cashGiven < feeNow) {
+                        throw new InvalidPaymentException("Cash given is less than amount due");
+                    }
+                    payment = new CashPayment(feeNow, cashGiven);
+                } else if ("CARD".equals(method)) {
+                    System.out.print("Card number: ");
+                    String card = scanner.nextLine().trim();
+                    if (card == null || card.replaceAll("\\s", "").length() < 12) {
+                        throw new InvalidPaymentException("Card number appears too short");
+                    }
+                    System.out.print("Cardholder name (optional): ");
+                    String holder = scanner.nextLine().trim();
+                    payment = new CardPayment(feeNow, card, holder);
+                } else {
+                    System.err.println("Unsupported payment method: " + method);
+                    pause();
+                    return;
+                }
+            } catch (InvalidPaymentException ipe) {
+                System.err.println("Invalid payment input: " + ipe.getMessage());
+                pause();
+                return;
+            }
+
+            Transaction[] out = new Transaction[1];
+            PaymentResult pr = billingService.payAndCreateTransaction(v, entry, System.currentTimeMillis(), payment, out);
+            if (!pr.isSuccess()) {
+                System.err.println("Payment failed: " + pr.getMessage());
+                pause();
+                return;
+            }
+
+            Transaction tx = out[0];
+            if (tx == null) {
+                tx = new Transaction(v.getPlateNumber(), v.getType(), entry, System.currentTimeMillis(), feeNow, ("CASH".equalsIgnoreCase(method) ? "CASH" : "CARD"), pr.getReferenceId());
+            }
+
+            // Now remove the vehicle; if removal fails, record to outbox
+            Vehicle removed = parkingLot.removeVehicleByPlate(plate);
+            if (removed == null) {
+                System.err.println("Warning: payment succeeded but failed to free the slot. Transaction will NOT be persisted.");
+                try {
+                    storageService.appendToOutbox(tx, "REMOVE_FAILED");
+                    System.out.println("Recorded transaction to outbox for manual recovery.");
+                } catch (StorageException se) {
+                    System.err.println("Failed to write outbox record: " + se.getMessage());
+                }
+                pause();
+                return;
+            }
+
+            boolean persisted = tryPersistTransaction(tx);
+            if (!persisted) {
+                try {
+                    storageService.appendToOutbox(tx, "PERSIST_FAILED");
+                    System.out.println("Recorded transaction to outbox for retry.");
+                } catch (StorageException se) {
+                    System.err.println("Failed to write outbox record: " + se.getMessage());
+                }
+            }
+
+            String receipt = ReceiptPrinter.renderReceipt(tx, v, pr);
+            System.out.println();
+            System.out.println(receipt);
+            System.out.printf("Entry: %s | Exit: %s%n", formatMillis(entry), formatMillis(tx.getExitTime()));
+
+            // Write receipt file
+            try {
+                Path receiptsDir = Paths.get("data", "receipts");
+                if (!Files.exists(receiptsDir)) Files.createDirectories(receiptsDir);
+                Path receiptFile = receiptsDir.resolve("receipt-" + (tx != null ? tx.getId() : System.currentTimeMillis()) + ".txt");
+                try (BufferedWriter rbw = Files.newBufferedWriter(receiptFile, StandardCharsets.UTF_8,
+                        StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
+                    rbw.write(receipt);
+                    rbw.newLine();
+                    rbw.flush();
+                }
+                System.out.println("Saved receipt to " + receiptFile.toString());
+            } catch (IOException ioe) {
+                System.err.println("Warning: failed to write receipt file: " + ioe.getMessage());
+            }
+
+            if (!persisted) {
+                System.out.println("Warning: transaction not persisted. Use DATA STORAGE -> Retry Outbox to reconcile.");
+            }
+            pause();
+            return;
+        } else {
             System.out.println("Pull-out cancelled.");
             pause();
             return;
         }
-
-        Vehicle removed = parkingLot.removeVehicleByPlate(plate);
-        if (removed == null) {
-            System.err.println("Pull-out failed: vehicle could not be removed (not found or unexpected).");
-        } else {
-            System.out.println("Vehicle successfully pulled out and slot freed.");
-        }
-        pause();
     }
 
     private void occupancyTrackingMenu() {
@@ -580,23 +586,116 @@ public class CarParkManagementSystem {
             pause();
             return;
         }
-
+        // Payment is only allowed for vehicles that have been pulled out (pending exits)
         ParkingSlot slot = parkingLot.findSlotByPlate(plate);
-        if (slot == null) {
-            System.out.println("Vehicle not found in any slot.");
+        if (slot != null) {
+            System.err.println("This vehicle is still parked. Please perform PULL-OUT first, then use PAYMENT to pay for the exited vehicle.");
             pause();
             return;
         }
 
-        Vehicle v = slot.getCurrentVehicle();
-        if (v == null) {
-            System.out.println("No vehicle present in slot for plate.");
+        PendingExit pending = pendingExits.get(plate);
+        if (pending == null) {
+            System.err.println("No pending exit found for plate: " + plate + ". If vehicle already left, ensure operator added pending exit.");
             pause();
             return;
         }
-        // Simpler policy: require the operator to perform PULL-OUT (exit) first, then use PAYMENT.
-        System.err.println("Payment is disabled for parked vehicles in this mode.");
-        System.err.println("Please perform PULL-OUT (Parking Operations -> PULL-OUT VEHICLE) first, then use PAYMENT to record payment if needed.");
+
+        Vehicle v = pending.vehicle;
+        long entry = pending.entryTime;
+        long exit = System.currentTimeMillis();
+        double fee = billingService.computeFee(v, entry, exit);
+
+        System.out.printf("Amount due for plate %s: %.2f (entry: %s)%n", plate, fee, formatMillis(entry));
+        System.out.print("Proceed to payment? (y/n): ");
+        String ok = scanner.nextLine().trim().toLowerCase();
+        if (!"y".equals(ok) && !"yes".equals(ok)) {
+            System.out.println("Payment cancelled.");
+            pause();
+            return;
+        }
+
+        System.out.print("Payment method (CASH/CARD): ");
+        String method = scanner.nextLine().trim().toUpperCase();
+        Payment payment = null;
+
+        try {
+            if ("CASH".equals(method)) {
+                System.out.print("Cash given: ");
+                String cashS = scanner.nextLine().trim();
+                double cashGiven = parseDoubleOrDefault(cashS, -1.0);
+                if (cashGiven < fee) {
+                    throw new InvalidPaymentException("Cash given is less than amount due");
+                }
+                payment = new CashPayment(fee, cashGiven);
+            } else if ("CARD".equals(method)) {
+                System.out.print("Card number: ");
+                String card = scanner.nextLine().trim();
+                if (card == null || card.replaceAll("\\s", "").length() < 12) {
+                    throw new InvalidPaymentException("Card number appears too short");
+                }
+                System.out.print("Cardholder name (optional): ");
+                String holder = scanner.nextLine().trim();
+                payment = new CardPayment(fee, card, holder);
+            } else {
+                throw new InvalidPaymentException("Unsupported payment method: " + method);
+            }
+        } catch (InvalidPaymentException ex) {
+            System.err.println("Invalid payment input: " + ex.getMessage());
+            pause();
+            return;
+        }
+
+        Transaction[] out = new Transaction[1];
+        PaymentResult pr = billingService.payAndCreateTransaction(v, entry, exit, payment, out);
+        if (!pr.isSuccess()) {
+            System.out.println("Payment failed: " + pr.getMessage());
+            pause();
+            return;
+        }
+
+        Transaction tx = out[0];
+        if (tx == null) {
+            tx = new Transaction(v.getPlateNumber(), v.getType(), entry, exit, fee, ("CASH".equalsIgnoreCase(method) ? "CASH" : "CARD"), pr.getReferenceId());
+        }
+
+        boolean persisted = tryPersistTransaction(tx);
+        if (!persisted) {
+            try {
+                storageService.appendToOutbox(tx, "PERSIST_FAILED");
+                System.out.println("Recorded transaction to outbox for retry.");
+            } catch (StorageException se) {
+                System.err.println("Failed to write outbox record: " + se.getMessage());
+            }
+        }
+
+        // On success (or even if persist failed), remove the pending exit record to avoid double-pay
+        pendingExits.remove(plate);
+
+        String receipt = ReceiptPrinter.renderReceipt(tx, v, pr);
+        System.out.println();
+        System.out.println(receipt);
+        System.out.printf("Entry: %s | Exit: %s%n", formatMillis(entry), formatMillis(exit));
+
+        // Also write the receipt to a file under data/receipts/receipt-<id>.txt (UTF-8)
+        try {
+            Path receiptsDir = Paths.get("data", "receipts");
+            if (!Files.exists(receiptsDir)) Files.createDirectories(receiptsDir);
+            Path receiptFile = receiptsDir.resolve("receipt-" + (tx != null ? tx.getId() : System.currentTimeMillis()) + ".txt");
+            try (BufferedWriter rbw = Files.newBufferedWriter(receiptFile, StandardCharsets.UTF_8,
+                    StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
+                rbw.write(receipt);
+                rbw.newLine();
+                rbw.flush();
+            }
+            System.out.println("Saved receipt to " + receiptFile.toString());
+        } catch (IOException ioe) {
+            System.err.println("Warning: failed to write receipt file: " + ioe.getMessage());
+        }
+
+        if (!persisted) {
+            System.out.println("Warning: transaction not persisted. Use DATA STORAGE -> Retry Outbox to reconcile.");
+        }
         pause();
     }
 
@@ -869,6 +968,18 @@ public class CarParkManagementSystem {
         String receipt = ReceiptPrinter.renderReceipt(tx, v, pr);
         receipt += System.lineSeparator() + "Entry: " + formatMillis(entry) + " | Exit: " + formatMillis(exit);
         return receipt;
+    }
+
+    private static class PendingExit {
+        final String plate;
+        final Vehicle vehicle;
+        final long entryTime;
+
+        PendingExit(String plate, Vehicle vehicle, long entryTime) {
+            this.plate = plate;
+            this.vehicle = vehicle;
+            this.entryTime = entryTime;
+        }
     }
 
     private static class VehicleRecord {
