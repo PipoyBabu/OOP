@@ -134,7 +134,7 @@ public class CarParkManagementSystem {
     }
 
     double height = 0.0;
-    System.out.print("Height in meters (optional — press Enter to skip): ");
+    System.out.print("Height in meters (optional - press Enter to skip): ");
     String h = scanner.nextLine().trim();
     if (!h.isEmpty()) {
         height = parseDoubleOrDefault(h, 0.0);
@@ -238,15 +238,15 @@ public class CarParkManagementSystem {
         try {
             parkingLot.parkOrThrow(v);
         } catch (SlotUnavailableException ex) {
-            System.out.println("Could not park vehicle: " + ex.getMessage());
+            System.err.println("Could not park vehicle: " + ex.getMessage());
             pause();
             return;
         } catch (IllegalArgumentException ex) {
-            System.out.println("Invalid vehicle data: " + ex.getMessage());
+            System.err.println("Invalid vehicle data: " + ex.getMessage());
             pause();
             return;
         } catch (Exception ex) {
-            System.out.println("Unexpected error while parking: " + ex.getMessage());
+            System.err.println("Unexpected error while parking: " + ex.getMessage());
             pause();
             return;
         }
@@ -295,9 +295,9 @@ public class CarParkManagementSystem {
             Vehicle removed = parkingLot.removeVehicleOrThrow(plate);
             System.out.println("Vehicle successfully pulled out and slot freed.");
         } catch (VehicleNotFoundException ex) {
-            System.out.println("Pull-out failed: " + ex.getMessage());
+            System.err.println("Pull-out failed: " + ex.getMessage());
         } catch (Exception ex) {
-            System.out.println("Unexpected error while removing vehicle: " + ex.getMessage());
+            System.err.println("Unexpected error while removing vehicle: " + ex.getMessage());
         }
         pause();
     }
@@ -613,7 +613,7 @@ public class CarParkManagementSystem {
                 return;
             }
         } catch (Exception ex) {
-            System.out.println("Invalid payment input: " + ex.getMessage());
+            System.err.println("Invalid payment input: " + ex.getMessage());
             pause();
             return;
         }
@@ -636,7 +636,7 @@ public class CarParkManagementSystem {
         try {
             parkingLot.removeVehicleByPlate(plate);
         } catch (Exception ex) {
-            System.out.println("Warning: payment succeeded but failed to free the slot: " + ex.getMessage());
+            System.err.println("Warning: payment succeeded but failed to free the slot: " + ex.getMessage());
         }
 
         String receipt = ReceiptPrinter.renderReceipt(tx, v, pr);
@@ -658,7 +658,7 @@ public class CarParkManagementSystem {
             System.out.println("Transaction persisted to " + storageService.getPath());
             return true;
         } catch (StorageException se) {
-            System.out.println("Failed to persist transaction: " + se.getMessage());
+            System.err.println("Failed to persist transaction: " + se.getMessage());
             return false;
         }
     }
