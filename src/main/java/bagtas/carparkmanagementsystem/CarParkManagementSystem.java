@@ -109,8 +109,7 @@ public class CarParkManagementSystem {
         }
     }
 
-    // owner removed from the interactive flow; still stored as empty string
-   private void registerVehicle() {
+    private void registerVehicle() {
     System.out.println();
     System.out.println("REGISTER VEHICLE");
 
@@ -168,7 +167,7 @@ public class CarParkManagementSystem {
         isPwd = true;
     }
 
-    VehicleRecord record = new VehicleRecord(plate, type, owner, height, engineCc, isPwd);
+    VehicleRecord record = new VehicleRecord(plate, type, height, engineCc, isPwd);
     registry.put(plate, record);
 
     System.out.println("Vehicle registered:");
@@ -719,12 +718,11 @@ public class CarParkManagementSystem {
 
             File vehiclesFile = new File(dataDir, "vehicles.txt");
             try (BufferedWriter bw = new BufferedWriter(new FileWriter(vehiclesFile))) {
-                // Simple line format: plate|type|owner|height|engineCc|pwd
+                // Simple line format: plate|type|height|engineCc|pwd
                 for (VehicleRecord r : registry.values()) {
-                    String line = String.format("%s|%s|%s|%.2f|%d|%s",
+                    String line = String.format("%s|%s|%.2f|%d|%s",
                         r.plate,
                         safeForFile(r.type),
-                        safeForFile(r.owner),
                         r.height,
                         r.engineCc,
                         r.pwd ? "1" : "0");
@@ -758,16 +756,15 @@ public class CarParkManagementSystem {
             while ((line = br.readLine()) != null) {
                 line = line.trim();
                 if (line.isEmpty()) continue;
-                // expected: plate|type|owner|height|engineCc|pwd
+                // expected: plate|type|height|engineCc|pwd
                 String[] parts = line.split("\\|", -1);
-                if (parts.length < 6) continue;
+                if (parts.length < 5) continue;
                 String plate = parts[0].trim();
                 String type = parts[1].trim();
-                String owner = parts[2].trim();
-                double height = parseDoubleOrDefault(parts[3].trim(), 0.0);
-                int engineCc = parseIntOrDefault(parts[4].trim(), 0);
-                boolean pwd = "1".equals(parts[5].trim()) || "true".equalsIgnoreCase(parts[5].trim());
-                VehicleRecord rec = new VehicleRecord(plate, type, owner, height, engineCc, pwd);
+                double height = parseDoubleOrDefault(parts[2].trim(), 0.0);
+                int engineCc = parseIntOrDefault(parts[3].trim(), 0);
+                boolean pwd = "1".equals(parts[4].trim()) || "true".equalsIgnoreCase(parts[4].trim());
+                VehicleRecord rec = new VehicleRecord(plate, type, height, engineCc, pwd);
                 registry.put(plate, rec);
                 loaded++;
             }
@@ -909,15 +906,13 @@ public class CarParkManagementSystem {
     private static class VehicleRecord {
         private final String plate;
         private final String type;
-        private final String owner;
         private final double height;
         private final int engineCc;
         private final boolean pwd;
 
-        VehicleRecord(String plate, String type, String owner, double height, int engineCc, boolean pwd) {
+        VehicleRecord(String plate, String type, double height, int engineCc, boolean pwd) {
             this.plate = plate;
             this.type = type;
-            this.owner = owner;
             this.height = height;
             this.engineCc = engineCc;
             this.pwd = pwd;
@@ -928,9 +923,7 @@ public class CarParkManagementSystem {
             StringBuilder sb = new StringBuilder();
             sb.append("Plate: ").append(plate);
             sb.append(", Type: ").append(type);
-            if (owner != null && !owner.isEmpty()) {
-                sb.append(", Owner: ").append(owner);
-            }
+            // owner removed from records
             if (height > 0.0) {
                 sb.append(", Height: ").append(String.format("%.2fm", height));
             }
