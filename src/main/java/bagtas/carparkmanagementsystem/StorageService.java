@@ -101,8 +101,25 @@ public class StorageService {
         method= sanitizeField(method);
         ref   = sanitizeField(ref);
 
+        // Pad columns to minimum widths so pipe-delimited columns align for humans
+        plate = padField(plate, 8);
+        type = padField(type, 8);
+        entryHuman = padField(entryHuman, 20);
+        exitHuman = padField(exitHuman, 20);
+        method = padField(method, 8);
+        ref = padField(ref, 8);
+
         return String.format("%d | %s | %s | %s | %s | %.2f | %s | %s",
             now, plate, type, entryHuman, exitHuman, amt, method, ref);
+    }
+
+    // Pad a field to a minimum width (right-pad with spaces); does not truncate
+    private String padField(String s, int minWidth) {
+        if (s == null) s = "";
+        if (s.length() >= minWidth) return s;
+        StringBuilder sb = new StringBuilder(s);
+        while (sb.length() < minWidth) sb.append(' ');
+        return sb.toString();
     }
 
     // Convert epoch millis to human timestamp; return "N/A" for 0

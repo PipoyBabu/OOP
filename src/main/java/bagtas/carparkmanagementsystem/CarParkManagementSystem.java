@@ -737,17 +737,22 @@ public class CarParkManagementSystem {
 
             Path vehiclesPath = dataDir.resolve("vehicles.txt");
             try (BufferedWriter bw = Files.newBufferedWriter(vehiclesPath, StandardCharsets.UTF_8)) {
-                // Write documented header (pipe-delimited) per user preference
-                bw.write("Plate | Type | Height | EngineCc | PWD");
+                // Write documented header (pipe-delimited) per user preference - aligned columns
+                String h0 = padColumn("Plate", 8);
+                String h1 = padColumn("Type", 8);
+                String h2 = padColumn("Height", 8);
+                String h3 = padColumn("EngineCc", 8);
+                String h4 = padColumn("PWD", 8);
+                bw.write(h0 + " | " + h1 + " | " + h2 + " | " + h3 + " | " + h4);
                 bw.newLine();
-                // Simple pipe-delimited line format: plate | type | height | engineCc | pwd
+                // Pipe-delimited line format with minimum column widths
                 for (VehicleRecord r : registry.values()) {
-                    String line = String.format("%s | %s | %.2f | %d | %s",
-                        r.plate,
-                        safeForFile(r.type),
-                        r.height,
-                        r.engineCc,
-                        r.pwd ? "1" : "0");
+                    String p0 = padColumn(safeForFile(r.plate), 8);
+                    String p1 = padColumn(safeForFile(r.type), 8);
+                    String p2 = padColumn(String.format("%.2f", r.height), 8);
+                    String p3 = padColumn(String.valueOf(r.engineCc), 8);
+                    String p4 = padColumn(r.pwd ? "1" : "0", 8);
+                    String line = p0 + " | " + p1 + " | " + p2 + " | " + p3 + " | " + p4;
                     bw.write(line);
                     bw.newLine();
                 }
@@ -822,7 +827,11 @@ public class CarParkManagementSystem {
         Path out = exportsDir.resolve("parked.txt");
         int written = 0;
         try (BufferedWriter bw = Files.newBufferedWriter(out, StandardCharsets.UTF_8)) {
-            bw.write("Plate | Type | EntryTime");
+            // Header with aligned columns (plate/type min 8, entry min 20)
+            String hh0 = padColumn("Plate", 8);
+            String hh1 = padColumn("Type", 8);
+            String hh2 = padColumn("EntryTime", 20);
+            bw.write(hh0 + " | " + hh1 + " | " + hh2);
             bw.newLine();
             Map<Integer, List<ParkingSlot>> snapshot = parkingLot.getFloorsSnapshot();
             if (snapshot != null) {
@@ -831,9 +840,9 @@ public class CarParkManagementSystem {
                     for (ParkingSlot slot : slots) {
                         Vehicle v = slot.getCurrentVehicle();
                         if (v == null) continue;
-                        String plate = v.getPlateNumber();
-                        String type = v.getType();
-                        String entry = formatMillis(slot.getEntryTime());
+                        String plate = padColumn(v.getPlateNumber(), 8);
+                        String type = padColumn(v.getType(), 8);
+                        String entry = padColumn(formatMillis(slot.getEntryTime()), 20);
                         String line = plate + " | " + type + " | " + entry;
                         bw.write(line);
                         bw.newLine();
@@ -890,6 +899,15 @@ public class CarParkManagementSystem {
     private String safeForFile(String s) {
         if (s == null) return "";
         return s.replace("|", " ").replace("\n", " ").trim();
+    }
+
+    // Pad a column to a minimum width (right-pad with spaces). Does not truncate.
+    private String padColumn(String s, int minWidth) {
+        if (s == null) s = "";
+        if (s.length() >= minWidth) return s;
+        StringBuilder sb = new StringBuilder(s);
+        while (sb.length() < minWidth) sb.append(' ');
+        return sb.toString();
     }
 
     // --- new helper flows exposed for programmatic use ---
