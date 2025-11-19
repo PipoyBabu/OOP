@@ -740,6 +740,9 @@ public class CarParkManagementSystem {
 
             Path vehiclesPath = dataDir.resolve("vehicles.txt");
             try (BufferedWriter bw = Files.newBufferedWriter(vehiclesPath, StandardCharsets.UTF_8)) {
+                // Write header for versioning and column names
+                bw.write("# Vehicles file v1 | columns: plate|type|height|engineCc|pwd");
+                bw.newLine();
                 // Simple line format: plate|type|height|engineCc|pwd
                 for (VehicleRecord r : registry.values()) {
                     String line = String.format("%s|%s|%.2f|%d|%s",
@@ -776,9 +779,11 @@ public class CarParkManagementSystem {
         int skipped = 0;
         try (BufferedReader br = Files.newBufferedReader(vehiclesPath, StandardCharsets.UTF_8)) {
             String line;
-            while ((line = br.readLine()) != null) {
+                while ((line = br.readLine()) != null) {
                 line = line.trim();
                 if (line.isEmpty()) continue;
+                // Skip header/comment lines that start with '#'
+                if (line.startsWith("#")) continue;
                 // expected: plate|type|height|engineCc|pwd
                 String[] parts = line.split("\\|", -1);
                 if (parts.length < 5) { skipped++; continue; }

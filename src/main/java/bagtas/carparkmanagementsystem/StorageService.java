@@ -57,8 +57,13 @@ public class StorageService {
 
         String line = buildLine(tx);
 
+        boolean existed = Files.exists(outPath);
         try (BufferedWriter bw = Files.newBufferedWriter(outPath, StandardCharsets.UTF_8,
                 StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
+            if (!existed) {
+                bw.write("# Transactions file v1 | columns: timestampMillis | plate | type | entryHuman | exitHuman | amount | method | reference");
+                bw.newLine();
+            }
             bw.write(line);
             bw.newLine();
             bw.flush();
