@@ -172,7 +172,8 @@ public class CarParkManagementSystem {
 
     System.out.println("Vehicle registered:");
     System.out.println(record);
-    pause();
+    pause(); 
+    
 }
 
 
