@@ -98,7 +98,12 @@ public class CarParkManagementSystem {
             String opt = scanner.nextLine().trim();
             switch (opt) {
                 case "1":
-                    registerVehicle();
+                    try {
+                        registerVehicle();
+                    } catch (InvalidVehicleTypeException ivt) {
+                        System.err.println("Invalid vehicle type: " + ivt.getMessage());
+                        pause();
+                    }
                     break;
                 case "2":
                     deleteVehicle();
@@ -131,6 +136,11 @@ public class CarParkManagementSystem {
     String type = scanner.nextLine().trim().toLowerCase();
     if (type.isEmpty()) {
         type = "car";
+    }
+
+    // Validate vehicle type input and signal domain error via custom exception
+    if (!"car".equals(type) && !"motorcycle".equals(type) && !"scooter".equals(type) && !"ev".equals(type)) {
+        throw new InvalidVehicleTypeException("Unsupported vehicle type: " + type);
     }
 
     double height = 0.0;
@@ -591,28 +601,22 @@ public class CarParkManagementSystem {
                 String cashS = scanner.nextLine().trim();
                 double cashGiven = parseDoubleOrDefault(cashS, -1.0);
                 if (cashGiven < fee) {
-                    System.out.println("Cash given is less than amount due. Payment cancelled.");
-                    pause();
-                    return;
+                    throw new InvalidPaymentException("Cash given is less than amount due");
                 }
                 payment = new CashPayment(fee, cashGiven);
             } else if ("CARD".equals(method)) {
                 System.out.print("Card number: ");
                 String card = scanner.nextLine().trim();
                 if (card == null || card.replaceAll("\\s", "").length() < 12) {
-                    System.out.println("Card number appears too short. Payment cancelled.");
-                    pause();
-                    return;
+                    throw new InvalidPaymentException("Card number appears too short");
                 }
                 System.out.print("Cardholder name (optional): ");
                 String holder = scanner.nextLine().trim();
                 payment = new CardPayment(fee, card, holder);
             } else {
-                System.out.println("Unsupported payment method.");
-                pause();
-                return;
+                throw new InvalidPaymentException("Unsupported payment method: " + method);
             }
-        } catch (Exception ex) {
+        } catch (InvalidPaymentException ex) {
             System.err.println("Invalid payment input: " + ex.getMessage());
             pause();
             return;
