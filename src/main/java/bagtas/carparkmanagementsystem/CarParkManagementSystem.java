@@ -98,12 +98,7 @@ public class CarParkManagementSystem {
             String opt = scanner.nextLine().trim();
             switch (opt) {
                 case "1":
-                    try {
-                        registerVehicle();
-                    } catch (InvalidVehicleTypeException ivt) {
-                        System.err.println("Invalid vehicle type: " + ivt.getMessage());
-                        pause();
-                    }
+                    registerVehicle();
                     break;
                 case "2":
                     deleteVehicle();
@@ -138,9 +133,11 @@ public class CarParkManagementSystem {
         type = "car";
     }
 
-    // Validate vehicle type input and signal domain error via custom exception
+    // Validate vehicle type input and handle domain error here
     if (!"car".equals(type) && !"motorcycle".equals(type) && !"scooter".equals(type) && !"ev".equals(type)) {
-        throw new InvalidVehicleTypeException("Unsupported vehicle type: " + type);
+        System.err.println("Unsupported vehicle type: " + type);
+        pause();
+        return;
     }
 
     double height = 0.0;
@@ -150,15 +147,19 @@ public class CarParkManagementSystem {
         height = parseDoubleOrDefault(h, 0.0);
     }
 
+    // Validate height against parking lot's maximum clearance and handle error here
+    if (height > ParkingLot.DEFAULT_CLEARANCE_M) {
+        System.err.println("Height " + height + "m exceeds maximum allowed clearance of " + ParkingLot.DEFAULT_CLEARANCE_M + "m");
+        pause();
+        return;
+    }
+
     int engineCc = 0;
     if ("motorcycle".equals(type) || "scooter".equals(type)) {
         System.out.print("Engine CC (press Enter for default 150): ");
         String cc = scanner.nextLine().trim();
         engineCc = parseIntOrDefault(cc, 150);
     }
-
-    // --- OWNER REMOVED ---
-    String owner = "";  // Always blank
 
     boolean isPwd = false;
     System.out.print("Is driver PWD? (y/n, press Enter for n): ");
@@ -245,18 +246,34 @@ public class CarParkManagementSystem {
             v = m;
         }
 
-        try {
-            parkingLot.parkOrThrow(v);
-        } catch (SlotUnavailableException ex) {
-            System.err.println("Could not park vehicle: " + ex.getMessage());
+        // Consistent internal handling: check duplicate plate and height, then attempt non-throwing park
+        if (parkingLot.findSlotByPlate(plate) != null) {
+            System.err.println("A vehicle with that plate is already parked.");
             pause();
             return;
+        }
+
+        if (v.getHeight() > ParkingLot.DEFAULT_CLEARANCE_M) {
+            System.err.println("Vehicle height " + v.getHeight() + "m exceeds lot maximum clearance of " + ParkingLot.DEFAULT_CLEARANCE_M + "m");
+            pause();
+            return;
+        }
+
+        boolean parked = false;
+        try {
+            parked = parkingLot.parkVehicle(v);
         } catch (IllegalArgumentException ex) {
             System.err.println("Invalid vehicle data: " + ex.getMessage());
             pause();
             return;
         } catch (Exception ex) {
             System.err.println("Unexpected error while parking: " + ex.getMessage());
+            pause();
+            return;
+        }
+
+        if (!parked) {
+            System.err.println("Could not park vehicle: no suitable slot available or slot refused vehicle.");
             pause();
             return;
         }
@@ -285,7 +302,7 @@ public class CarParkManagementSystem {
 
         ParkingSlot slot = parkingLot.findSlotByPlate(plate);
         if (slot == null) {
-            System.out.println("Vehicle not found in any slot.");
+            System.err.println("Vehicle not found in any slot.");
             pause();
             return;
         }
@@ -301,13 +318,11 @@ public class CarParkManagementSystem {
             return;
         }
 
-        try {
-            Vehicle removed = parkingLot.removeVehicleOrThrow(plate);
+        Vehicle removed = parkingLot.removeVehicleByPlate(plate);
+        if (removed == null) {
+            System.err.println("Pull-out failed: vehicle could not be removed (not found or unexpected).");
+        } else {
             System.out.println("Vehicle successfully pulled out and slot freed.");
-        } catch (VehicleNotFoundException ex) {
-            System.err.println("Pull-out failed: " + ex.getMessage());
-        } catch (Exception ex) {
-            System.err.println("Unexpected error while removing vehicle: " + ex.getMessage());
         }
         pause();
     }

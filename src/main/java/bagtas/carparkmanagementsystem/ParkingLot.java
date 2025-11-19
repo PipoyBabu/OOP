@@ -247,6 +247,10 @@ public class ParkingLot {
     
     public void parkOrThrow(Vehicle v) {
     if (v == null) throw new IllegalArgumentException("vehicle null");
+    // Global height guard: disallow vehicles taller than the lot's default clearance
+    if (v.getHeight() > DEFAULT_CLEARANCE_M) {
+        throw new InvalidVehicleHeightException("Vehicle height " + v.getHeight() + "m exceeds lot maximum clearance of " + DEFAULT_CLEARANCE_M + "m");
+    }
     if (plateToSlot.containsKey(v.getPlateNumber())) {
         throw new SlotUnavailableException("Duplicate plate parked: " + v.getPlateNumber());
     }
