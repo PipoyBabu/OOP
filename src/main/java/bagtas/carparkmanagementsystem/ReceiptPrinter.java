@@ -28,6 +28,25 @@ public final class ReceiptPrinter {
         return String.format("%02dh %02dm %02ds", hours, mins, s);
     }
 
+    // Count overnight windows intersecting the stay (22:00 -> 10:00 next day)
+    private static int countOvernightWindows(long entryMs, long exitMs) {
+        if (exitMs <= entryMs) return 0;
+        java.time.ZoneId zone = java.time.ZoneId.systemDefault();
+        java.time.ZonedDateTime start = java.time.Instant.ofEpochMilli(entryMs).atZone(zone);
+        java.time.ZonedDateTime end = java.time.Instant.ofEpochMilli(exitMs).atZone(zone);
+        java.time.LocalDate day = start.toLocalDate().minusDays(1);
+        java.time.LocalDate last = end.toLocalDate();
+        int nights = 0;
+        while (!day.isAfter(last)) {
+            java.time.ZonedDateTime windowStart = day.atTime(java.time.LocalTime.of(22, 0)).atZone(zone);
+            java.time.ZonedDateTime windowEnd = day.plusDays(1).atTime(java.time.LocalTime.of(10, 0)).atZone(zone);
+            boolean intersects = start.isBefore(windowEnd) && end.isAfter(windowStart);
+            if (intersects) nights++;
+            day = day.plusDays(1);
+        }
+        return nights;
+    }
+
     public static String renderReceipt(Transaction tx, Vehicle v, PaymentResult pr) {
         StringBuilder sb = new StringBuilder();
         sb.append("BAGTAS PARKING MANAGEMENT\n");
@@ -48,12 +67,12 @@ public final class ReceiptPrinter {
         int billedHours = (int) Math.ceil(durationMs / 3_600_000.0);
         int extraHours = Math.max(0, billedHours - baseH);
         double extraCharge = extraHours * rate;
-        int fullDays = (int) (durationMs / 86_400_000L);
-        double overnight = fullDays * v.getOvernightFee();
+        int overnightCount = countOvernightWindows(tx.getEntryTime(), tx.getExitTime());
+        double overnight = overnightCount * v.getOvernightFee();
 
         sb.append(String.format("Base (%dh): %,.2f\n", baseH, base));
         if (extraHours > 0) sb.append(String.format("Extra hours (%d @ %,.2f): %,.2f\n", extraHours, rate, extraCharge));
-        if (overnight > 0) sb.append(String.format("Overnight (%d days): %,.2f\n", fullDays, overnight));
+        if (overnight > 0) sb.append(String.format("Overnight (%d nights): %,.2f\n", overnightCount, overnight));
 
         double subtotal = base + extraCharge + overnight;
         sb.append(String.format("Subtotal: %,.2f\n", subtotal));

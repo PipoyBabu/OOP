@@ -10,6 +10,9 @@ package bagtas.carparkmanagementsystem;
  */
 
 import java.util.UUID;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 
 /**
  * Immutable transaction record used for logging and export.
@@ -49,17 +52,23 @@ public final class Transaction {
     public String getNotes() { return notes; }
 
     public static String csvHeader() {
-        return "transactionId,plate,vehicleType,entryTime,exitTime,durationMs,fee,modeOfPayment,notes";
+        return "transactionId,plate,vehicleType,entryTime,entryHuman,exitTime,exitHuman,durationMs,fee,modeOfPayment,notes";
     }
 
     public String toCsvLine() {
         String safeNotes = notes.replace("\n", " ").replace("\r", " ").replace(",", " ");
+        // human-friendly timestamps (system default zone)
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault());
+        String entryHuman = entryTime <= 0 ? "N/A" : fmt.format(Instant.ofEpochMilli(entryTime));
+        String exitHuman = exitTime <= 0 ? "N/A" : fmt.format(Instant.ofEpochMilli(exitTime));
         return String.join(",",
             escape(id),
             escape(plate),
             escape(vehicleType),
             String.valueOf(entryTime),
+            escape(entryHuman),
             String.valueOf(exitTime),
+            escape(exitHuman),
             String.valueOf(durationMs),
             String.format("%.2f", fee),
             escape(modeOfPayment),
