@@ -110,59 +110,61 @@ public class CarParkManagementSystem {
     }
 
     // owner removed from the interactive flow; still stored as empty string
-    private void registerVehicle() {
-        System.out.println();
-        System.out.println("REGISTER VEHICLE");
+   private void registerVehicle() {
+    System.out.println();
+    System.out.println("REGISTER VEHICLE");
 
-        System.out.print("Plate number (required): ");
-        String plate = scanner.nextLine().trim();
-        if (plate.isEmpty()) {
-            System.out.println("Plate number cannot be empty.");
-            pause();
-            return;
-        }
-        if (registry.containsKey(plate)) {
-            System.out.println("A vehicle with that plate is already registered.");
-            pause();
-            return;
-        }
-
-        System.out.print("Vehicle type (car/motorcycle/scooter/ev) [default: car]: ");
-        String type = scanner.nextLine().trim().toLowerCase();
-        if (type.isEmpty()) {
-            type = "car";
-        }
-
-        double height = 0.0;
-        System.out.print("Height in meters (optional — press Enter to skip): ");
-        String h = scanner.nextLine().trim();
-        if (!h.isEmpty()) {
-            height = parseDoubleOrDefault(h, 0.0);
-        }
-
-        int engineCc = 0;
-        if ("motorcycle".equals(type) || "scooter".equals(type)) {
-            System.out.print("Engine CC (press Enter for default 150): ");
-            String cc = scanner.nextLine().trim();
-            engineCc = parseIntOrDefault(cc, 150);
-        }
-
-        System.out.print("Owner name (optional — press Enter to skip): ");
-        String owner = scanner.nextLine().trim();
-
-        boolean isPwd = false;
-        System.out.print("Is driver PWD? (y/n, press Enter for n): ");
-        String pwd = scanner.nextLine().trim().toLowerCase();
-        if ("y".equals(pwd) || "yes".equals(pwd)) {
-            isPwd = true;
-        }
-
-        VehicleRecord record = new VehicleRecord(plate, type, owner, height, engineCc, isPwd);
-        registry.put(plate, record);
-        System.out.println("Vehicle registered:");
-        System.out.println(record);
+    System.out.print("Plate number (required): ");
+    String plate = scanner.nextLine().trim();
+    if (plate.isEmpty()) {
+        System.out.println("Plate number cannot be empty.");
         pause();
+        return;
     }
+    if (registry.containsKey(plate)) {
+        System.out.println("A vehicle with that plate is already registered.");
+        pause();
+        return;
+    }
+
+    System.out.print("Vehicle type (car/motorcycle/scooter/ev) [default: car]: ");
+    String type = scanner.nextLine().trim().toLowerCase();
+    if (type.isEmpty()) {
+        type = "car";
+    }
+
+    double height = 0.0;
+    System.out.print("Height in meters (optional — press Enter to skip): ");
+    String h = scanner.nextLine().trim();
+    if (!h.isEmpty()) {
+        height = parseDoubleOrDefault(h, 0.0);
+    }
+
+    int engineCc = 0;
+    if ("motorcycle".equals(type) || "scooter".equals(type)) {
+        System.out.print("Engine CC (press Enter for default 150): ");
+        String cc = scanner.nextLine().trim();
+        engineCc = parseIntOrDefault(cc, 150);
+    }
+
+    // --- OWNER REMOVED ---
+    String owner = "";  // Always blank
+
+    boolean isPwd = false;
+    System.out.print("Is driver PWD? (y/n, press Enter for n): ");
+    String pwd = scanner.nextLine().trim().toLowerCase();
+    if ("y".equals(pwd) || "yes".equals(pwd)) {
+        isPwd = true;
+    }
+
+    VehicleRecord record = new VehicleRecord(plate, type, owner, height, engineCc, isPwd);
+    registry.put(plate, record);
+
+    System.out.println("Vehicle registered:");
+    System.out.println(record);
+    pause();
+}
+
 
     private void deleteVehicle() {
         System.out.print("Enter plate to delete: ");
