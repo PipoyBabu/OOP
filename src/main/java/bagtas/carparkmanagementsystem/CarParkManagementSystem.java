@@ -594,96 +594,9 @@ public class CarParkManagementSystem {
             pause();
             return;
         }
-
-        long entry = slot.getEntryTime();
-        long exit = System.currentTimeMillis();
-        double fee = billingService.computeFee(v, entry, exit);
-
-        System.out.printf("Amount due for plate %s: %.2f (entry: %s)%n", plate, fee, formatMillis(entry));
-        System.out.print("Proceed to payment? (y/n): ");
-        String ok = scanner.nextLine().trim().toLowerCase();
-        if (!"y".equals(ok) && !"yes".equals(ok)) {
-            System.out.println("Payment cancelled.");
-            pause();
-            return;
-        }
-
-        System.out.print("Payment method (CASH/CARD): ");
-        String method = scanner.nextLine().trim().toUpperCase();
-        Payment payment = null;
-
-        try {
-            if ("CASH".equals(method)) {
-                System.out.print("Cash given: ");
-                String cashS = scanner.nextLine().trim();
-                double cashGiven = parseDoubleOrDefault(cashS, -1.0);
-                if (cashGiven < fee) {
-                    throw new InvalidPaymentException("Cash given is less than amount due");
-                }
-                payment = new CashPayment(fee, cashGiven);
-            } else if ("CARD".equals(method)) {
-                System.out.print("Card number: ");
-                String card = scanner.nextLine().trim();
-                if (card == null || card.replaceAll("\\s", "").length() < 12) {
-                    throw new InvalidPaymentException("Card number appears too short");
-                }
-                System.out.print("Cardholder name (optional): ");
-                String holder = scanner.nextLine().trim();
-                payment = new CardPayment(fee, card, holder);
-            } else {
-                throw new InvalidPaymentException("Unsupported payment method: " + method);
-            }
-        } catch (InvalidPaymentException ex) {
-            System.err.println("Invalid payment input: " + ex.getMessage());
-            pause();
-            return;
-        }
-
-        Transaction[] out = new Transaction[1];
-        PaymentResult pr = billingService.payAndCreateTransaction(v, entry, exit, payment, out);
-        if (!pr.isSuccess()) {
-            System.out.println("Payment failed: " + pr.getMessage());
-            pause();
-            return;
-        }
-
-        Transaction tx = out[0];
-        if (tx == null) {
-            tx = new Transaction(v.getPlateNumber(), v.getType(), entry, exit, fee, ("CASH".equalsIgnoreCase(method) ? "CASH" : "CARD"), pr.getReferenceId());
-        }
-
-        boolean persisted = tryPersistTransaction(tx);
-
-        try {
-            parkingLot.removeVehicleByPlate(plate);
-        } catch (Exception ex) {
-            System.err.println("Warning: payment succeeded but failed to free the slot: " + ex.getMessage());
-        }
-
-        String receipt = ReceiptPrinter.renderReceipt(tx, v, pr);
-        System.out.println();
-        System.out.println(receipt);
-        System.out.printf("Entry: %s | Exit: %s%n", formatMillis(entry), formatMillis(exit));
-
-        // Also write the receipt to a file under data/receipts/receipt-<id>.txt (UTF-8)
-        try {
-            Path receiptsDir = Paths.get("data", "receipts");
-            if (!Files.exists(receiptsDir)) Files.createDirectories(receiptsDir);
-            Path receiptFile = receiptsDir.resolve("receipt-" + (tx != null ? tx.getId() : System.currentTimeMillis()) + ".txt");
-            try (BufferedWriter rbw = Files.newBufferedWriter(receiptFile, StandardCharsets.UTF_8,
-                    StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
-                rbw.write(receipt);
-                rbw.newLine();
-                rbw.flush();
-            }
-            System.out.println("Saved receipt to " + receiptFile.toString());
-        } catch (IOException ioe) {
-            System.err.println("Warning: failed to write receipt file: " + ioe.getMessage());
-        }
-
-        if (!persisted) {
-            System.out.println("Warning: transaction not persisted. Use DATA STORAGE -> Save state to retry.");
-        }
+        // Simpler policy: require the operator to perform PULL-OUT (exit) first, then use PAYMENT.
+        System.err.println("Payment is disabled for parked vehicles in this mode.");
+        System.err.println("Please perform PULL-OUT (Parking Operations -> PULL-OUT VEHICLE) first, then use PAYMENT to record payment if needed.");
         pause();
     }
 
