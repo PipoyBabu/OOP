@@ -740,12 +740,12 @@ public class CarParkManagementSystem {
 
             Path vehiclesPath = dataDir.resolve("vehicles.txt");
             try (BufferedWriter bw = Files.newBufferedWriter(vehiclesPath, StandardCharsets.UTF_8)) {
-                // Write header for versioning and column names
-                bw.write("# Vehicles file v1 | columns: plate|type|height|engineCc|pwd");
+                // Write CSV header for clarity and better editor rendering
+                bw.write("plate,type,height,engineCc,pwd");
                 bw.newLine();
-                // Simple line format: plate|type|height|engineCc|pwd
+                // Simple CSV line format: plate,type,height,engineCc,pwd
                 for (VehicleRecord r : registry.values()) {
-                    String line = String.format("%s|%s|%.2f|%d|%s",
+                    String line = String.format("%s,%s,%.2f,%d,%s",
                         r.plate,
                         safeForFile(r.type),
                         r.height,
@@ -780,18 +780,27 @@ public class CarParkManagementSystem {
         try (BufferedReader br = Files.newBufferedReader(vehiclesPath, StandardCharsets.UTF_8)) {
             String line;
                 while ((line = br.readLine()) != null) {
-                line = line.trim();
-                if (line.isEmpty()) continue;
-                // Skip header/comment lines that start with '#'
-                if (line.startsWith("#")) continue;
-                // expected: plate|type|height|engineCc|pwd
-                String[] parts = line.split("\\|", -1);
-                if (parts.length < 5) { skipped++; continue; }
-                String plate = parts[0].trim();
-                String type = parts[1].trim();
-                double height = parseDoubleOrDefault(parts[2].trim(), 0.0);
-                int engineCc = parseIntOrDefault(parts[3].trim(), 0);
-                boolean pwd = "1".equals(parts[4].trim()) || "true".equalsIgnoreCase(parts[4].trim());
+                    line = line.trim();
+                    if (line.isEmpty()) continue;
+                    // Skip header/comment lines that start with '#' or a CSV header 'plate,'
+                    if (line.startsWith("#")) continue;
+                    if (line.toLowerCase().startsWith("plate,")) continue;
+
+                    // Accept either pipe-delimited or comma-delimited lines for backward compatibility
+                    String[] parts;
+                    if (line.contains("|")) {
+                        parts = line.split("\\|", -1);
+                    } else if (line.contains(",")) {
+                        parts = line.split(",", -1);
+                    } else {
+                        skipped++; continue;
+                    }
+                    if (parts.length < 5) { skipped++; continue; }
+                    String plate = parts[0].trim();
+                    String type = parts[1].trim();
+                    double height = parseDoubleOrDefault(parts[2].trim(), 0.0);
+                    int engineCc = parseIntOrDefault(parts[3].trim(), 0);
+                    boolean pwd = "1".equals(parts[4].trim()) || "true".equalsIgnoreCase(parts[4].trim());
                 VehicleRecord rec = new VehicleRecord(plate, type, height, engineCc, pwd);
                 registry.put(plate, rec);
                 loaded++;
