@@ -15,6 +15,11 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -663,6 +668,22 @@ public class CarParkManagementSystem {
         System.out.println(receipt);
         System.out.printf("Entry: %s | Exit: %s%n", formatMillis(entry), formatMillis(exit));
 
+        // Also write the receipt to a file under data/receipts/receipt-<id>.txt (UTF-8)
+        try {
+            Path receiptsDir = Paths.get("data", "receipts");
+            if (!Files.exists(receiptsDir)) Files.createDirectories(receiptsDir);
+            Path receiptFile = receiptsDir.resolve("receipt-" + (tx != null ? tx.getId() : System.currentTimeMillis()) + ".txt");
+            try (BufferedWriter rbw = Files.newBufferedWriter(receiptFile, StandardCharsets.UTF_8,
+                    StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
+                rbw.write(receipt);
+                rbw.newLine();
+                rbw.flush();
+            }
+            System.out.println("Saved receipt to " + receiptFile.toString());
+        } catch (IOException ioe) {
+            System.err.println("Warning: failed to write receipt file: " + ioe.getMessage());
+        }
+
         if (!persisted) {
             System.out.println("Warning: transaction not persisted. Use DATA STORAGE -> Save state to retry.");
         }
@@ -714,11 +735,11 @@ public class CarParkManagementSystem {
         System.out.println();
         System.out.println("SAVE STATE");
         try {
-            File dataDir = new File("data");
-            if (!dataDir.exists()) dataDir.mkdirs();
+            Path dataDir = Paths.get("data");
+            if (!Files.exists(dataDir)) Files.createDirectories(dataDir);
 
-            File vehiclesFile = new File(dataDir, "vehicles.txt");
-            try (BufferedWriter bw = new BufferedWriter(new FileWriter(vehiclesFile))) {
+            Path vehiclesPath = dataDir.resolve("vehicles.txt");
+            try (BufferedWriter bw = Files.newBufferedWriter(vehiclesPath, StandardCharsets.UTF_8)) {
                 // Simple line format: plate|type|height|engineCc|pwd
                 for (VehicleRecord r : registry.values()) {
                     String line = String.format("%s|%s|%.2f|%d|%s",
@@ -733,7 +754,7 @@ public class CarParkManagementSystem {
                 bw.flush();
             }
 
-            System.out.println("Saved vehicles to " + vehiclesFile.getPath());
+            System.out.println("Saved vehicles to " + vehiclesPath.toString());
         } catch (IOException ioe) {
             System.out.println("Failed to save state: " + ioe.getMessage());
         }
@@ -744,22 +765,23 @@ public class CarParkManagementSystem {
     private void loadStateFlow() {
         System.out.println();
         System.out.println("LOAD STATE");
-        File vehiclesFile = new File("data/vehicles.txt");
-        if (!vehiclesFile.exists()) {
-            System.out.println("No saved vehicles file found at " + vehiclesFile.getPath());
+        Path vehiclesPath = Paths.get("data", "vehicles.txt");
+        if (!Files.exists(vehiclesPath)) {
+            System.out.println("No saved vehicles file found at " + vehiclesPath.toString());
             pause();
             return;
         }
 
         int loaded = 0;
-        try (BufferedReader br = new BufferedReader(new FileReader(vehiclesFile))) {
+        int skipped = 0;
+        try (BufferedReader br = Files.newBufferedReader(vehiclesPath, StandardCharsets.UTF_8)) {
             String line;
             while ((line = br.readLine()) != null) {
                 line = line.trim();
                 if (line.isEmpty()) continue;
                 // expected: plate|type|height|engineCc|pwd
                 String[] parts = line.split("\\|", -1);
-                if (parts.length < 5) continue;
+                if (parts.length < 5) { skipped++; continue; }
                 String plate = parts[0].trim();
                 String type = parts[1].trim();
                 double height = parseDoubleOrDefault(parts[2].trim(), 0.0);
@@ -769,7 +791,8 @@ public class CarParkManagementSystem {
                 registry.put(plate, rec);
                 loaded++;
             }
-            System.out.println("Loaded " + loaded + " vehicle(s) from " + vehiclesFile.getPath());
+            System.out.println("Loaded " + loaded + " vehicle(s) from " + vehiclesPath.toString());
+            if (skipped > 0) System.out.println("Skipped " + skipped + " malformed line(s) while loading vehicles.");
         } catch (IOException ioe) {
             System.out.println("Failed to load state: " + ioe.getMessage());
         }
@@ -780,12 +803,14 @@ public class CarParkManagementSystem {
     private void exportParkedFlow() {
         System.out.println();
         System.out.println("EXPORT FILE (currently parked vehicles)");
-        File exportsDir = new File("exports");
-        if (!exportsDir.exists()) exportsDir.mkdirs();
+        Path exportsDir = Paths.get("exports");
+        try {
+            if (!Files.exists(exportsDir)) Files.createDirectories(exportsDir);
+        } catch (IOException ignored) {}
 
-        File out = new File(exportsDir, "parked.txt");
+        Path out = exportsDir.resolve("parked.txt");
         int written = 0;
-        try (BufferedWriter bw = new BufferedWriter(new FileWriter(out))) {
+        try (BufferedWriter bw = Files.newBufferedWriter(out, StandardCharsets.UTF_8)) {
             bw.write("Plate | Type | EntryTime");
             bw.newLine();
             Map<Integer, List<ParkingSlot>> snapshot = parkingLot.getFloorsSnapshot();
@@ -806,7 +831,7 @@ public class CarParkManagementSystem {
                 }
             }
             bw.flush();
-            System.out.println("Exported " + written + " parked record(s) to " + out.getPath());
+            System.out.println("Exported " + written + " parked record(s) to " + out.toString());
         } catch (IOException ioe) {
             System.out.println("Failed to export parked file: " + ioe.getMessage());
         }

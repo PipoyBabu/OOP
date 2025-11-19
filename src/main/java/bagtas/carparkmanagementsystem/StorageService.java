@@ -10,9 +10,12 @@ package bagtas.carparkmanagementsystem;
  * @author unit 1
  */
 import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -27,7 +30,7 @@ import java.time.format.DateTimeFormatter;
  * Uses java.io only and wraps IO problems into StorageException.
  */
 public class StorageService {
-    private final File outFile;
+    private final Path outPath;
 
     // Human-friendly timestamp formatter (system default zone)
     private static final DateTimeFormatter HUMAN_TS_FMT =
@@ -35,9 +38,15 @@ public class StorageService {
 
     public StorageService(String path) {
         if (path == null || path.isEmpty()) throw new IllegalArgumentException("path required");
-        this.outFile = new File(path);
-        File parent = outFile.getParentFile();
-        if (parent != null && !parent.exists()) parent.mkdirs();
+        this.outPath = Paths.get(path);
+        Path parent = outPath.getParent();
+        if (parent != null) {
+            try {
+                if (!Files.exists(parent)) Files.createDirectories(parent);
+            } catch (IOException ioe) {
+                // best-effort: continue and let appendTransaction fail later if needed
+            }
+        }
     }
 
     /**
@@ -48,12 +57,13 @@ public class StorageService {
 
         String line = buildLine(tx);
 
-        try (BufferedWriter bw = new BufferedWriter(new FileWriter(outFile, true))) {
+        try (BufferedWriter bw = Files.newBufferedWriter(outPath, StandardCharsets.UTF_8,
+                StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
             bw.write(line);
             bw.newLine();
             bw.flush();
         } catch (IOException ioe) {
-            throw new StorageException("Failed to append transaction to " + outFile.getPath(), ioe);
+            throw new StorageException("Failed to append transaction to " + outPath.toString(), ioe);
         }
     }
 
@@ -61,7 +71,7 @@ public class StorageService {
      * Return configured path (useful for user messages).
      */
     public String getPath() {
-        return outFile.getPath();
+        return outPath.toString();
     }
 
     // Build a tolerant, human-friendly line using reflection fallbacks for common getters.
