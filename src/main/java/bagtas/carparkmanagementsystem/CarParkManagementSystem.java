@@ -292,42 +292,90 @@ public class CarParkManagementSystem {
     }
 
     private void pullOutVehicleFlow() {
-        System.out.println();
-        System.out.println("PULL-OUT VEHICLE (Exit from slot without billing)");
-        System.out.print("Enter plate number to pull out: ");
-        String plate = scanner.nextLine().trim();
-        if (plate.isEmpty()) {
-            System.out.println("Plate cannot be empty.");
-            pause();
-            return;
-        }
+    System.out.println();
+    System.out.println("PULL-OUT VEHICLE");
+    System.out.print("Enter plate number to pull out: ");
+    String plate = scanner.nextLine().trim();
 
-        ParkingSlot slot = parkingLot.findSlotByPlate(plate);
-        if (slot == null) {
-            System.err.println("Vehicle not found in any slot.");
-            pause();
-            return;
-        }
-
-        System.out.println("Vehicle located in " + slot.getSlotType()
-            + " on floor " + slot.getFloorNumber()
-            + " slot #" + slot.getSlotNumber() + ".");
-        System.out.print("Confirm pull-out (y/n): ");
-        String confirm = scanner.nextLine().trim().toLowerCase();
-        if (!"y".equals(confirm) && !"yes".equals(confirm)) {
-            System.out.println("Pull-out cancelled.");
-            pause();
-            return;
-        }
-
-        Vehicle removed = parkingLot.removeVehicleByPlate(plate);
-        if (removed == null) {
-            System.err.println("Pull-out failed: vehicle could not be removed (not found or unexpected).");
-        } else {
-            System.out.println("Vehicle successfully pulled out and slot freed.");
-        }
+    if (plate.isEmpty()) {
+        System.out.println("Plate cannot be empty.");
         pause();
+        return;
     }
+
+    ParkingSlot slot = parkingLot.findSlotByPlate(plate);
+    if (slot == null) {
+        System.err.println("Vehicle not found in any slot.");
+        pause();
+        return;
+    }
+
+    Vehicle v = slot.getCurrentVehicle();
+    long entry = slot.getEntryTime();
+    long exit = System.currentTimeMillis();
+
+    // Step 1: Compute Fee
+    double fee = billingService.computeFee(v, entry, exit);
+    System.out.println();
+    System.out.println("Vehicle found in " + slot.getSlotType()
+            + " on floor " + slot.getFloorNumber()
+            + " slot #" + slot.getSlotNumber());
+    System.out.printf("Parking Fee: %.2f%n", fee);
+    System.out.println("Entry: " + formatMillis(entry));
+    System.out.println("Exit : " + formatMillis(exit));
+
+    // Step 2: Choose payment method
+    System.out.println();
+    System.out.println("Select payment method:");
+    System.out.println("[1] - CASH");
+    System.out.println("[2] - CARD");
+    System.out.print("Choose: ");
+    String pm = scanner.nextLine().trim();
+
+    Payment payment = null;
+    if ("1".equals(pm)) {
+        System.out.print("Enter cash amount: ");
+        double cash = parseDoubleOrDefault(scanner.nextLine().trim(), 0.0);
+        payment = new CashPayment(fee, cash);
+    } else if ("2".equals(pm)) {
+        System.out.print("Enter card number: ");
+        String cn = scanner.nextLine().trim();
+        System.out.print("Enter card holder: ");
+        String ch = scanner.nextLine().trim();
+        payment = new CardPayment(fee, cn, ch);
+    } else {
+        System.out.println("Invalid payment method. Pull-out cancelled.");
+        pause();
+        return;
+    }
+
+    // Step 3: Process payment
+    Transaction[] out = new Transaction[1];
+    PaymentResult pr = billingService.payAndCreateTransaction(v, entry, exit, payment, out);
+
+    if (!pr.isSuccess()) {
+        System.err.println("Payment failed: " + pr.getMessage());
+        pause();
+        return;
+    }
+
+    // Step 4: Persist transaction
+    tryPersistTransaction(out[0]);
+
+    // Step 5: Remove vehicle
+    parkingLot.removeVehicleByPlate(plate);
+
+    // Step 6: Display receipt
+    String receipt = ReceiptPrinter.renderReceipt(out[0], v, pr);
+    System.out.println("\n--- RECEIPT ---");
+    System.out.println(receipt);
+    System.out.println("Entry: " + formatMillis(entry));
+    System.out.println("Exit : " + formatMillis(exit));
+    System.out.println("----------------");
+
+    System.out.println("Vehicle successfully billed and pulled out.");
+    pause();
+}
 
     private void occupancyTrackingMenu() {
         while (true) {
