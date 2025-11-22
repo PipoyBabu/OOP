@@ -115,7 +115,8 @@ public class CarParkManagementSystem {
         }
     }
 
-    private void registerVehicle() {
+
+private void registerVehicle() {
     System.out.println();
     System.out.println("REGISTER VEHICLE");
 
@@ -147,18 +148,36 @@ public class CarParkManagementSystem {
         return;
     }
 
+    // === Height is now REQUIRED ===
     double height = 0.0;
-    System.out.print("Height in meters (optional - press Enter to skip): ");
-    String h = scanner.nextLine().trim();
-    if (!h.isEmpty()) {
-        height = parseDoubleOrDefault(h, 0.0);
-    }
+    while (true) {
+        System.out.print("Height in meters (required): ");
+        String h = scanner.nextLine().trim();
 
-    // Validate height against parking lot's maximum clearance and handle error here
-    if (height > ParkingLot.DEFAULT_CLEARANCE_M) {
-        System.err.println("Height " + height + "m exceeds maximum allowed clearance of " + ParkingLot.DEFAULT_CLEARANCE_M + "m");
-        pause();
-        return;
+        if (h.isEmpty()) {
+            System.err.println("Height is required. Please enter a value in meters (e.g., 1.65).");
+            continue;
+        }
+
+        Double parsed = parseDoubleStrict(h);
+        if (parsed == null) {
+            System.err.println("Invalid height format. Please enter a numeric value (e.g., 1.65).");
+            continue;
+        }
+
+        if (parsed <= 0.0) {
+            System.err.println("Height must be greater than 0.");
+            continue;
+        }
+
+        if (parsed > ParkingLot.DEFAULT_CLEARANCE_M) {
+            System.err.println("Height " + parsed + "m exceeds maximum allowed clearance of "
+                    + ParkingLot.DEFAULT_CLEARANCE_M + "m");
+            continue;
+        }
+
+        height = parsed;
+        break;
     }
 
     int engineCc = 0;
@@ -180,9 +199,20 @@ public class CarParkManagementSystem {
 
     System.out.println("Vehicle registered:");
     System.out.println(record);
-    pause(); 
-    
+    pause();
 }
+
+/**
+ * Strict double parser: returns null if parsing fails.
+ */
+private Double parseDoubleStrict(String s) {
+    try {
+        return Double.parseDouble(s);
+    } catch (NumberFormatException e) {
+        return null;
+    }
+}
+
 
 
     private void deleteVehicle() {
