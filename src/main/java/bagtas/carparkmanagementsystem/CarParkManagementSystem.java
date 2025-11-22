@@ -150,7 +150,7 @@ private void registerVehicle() {
 
     //  Height is now REQUIRED 
     double height = 0.0;
-    while (true) {
+    
         System.out.print("Height in meters (required): ");
         String h = scanner.nextLine().trim();
 
@@ -178,7 +178,7 @@ private void registerVehicle() {
 
         height = parsed;
         break;
-    }
+    
 
     int engineCc = 0;
     if ("motorcycle".equals(type) || "scooter".equals(type)) {
