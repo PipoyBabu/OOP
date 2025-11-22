@@ -70,7 +70,7 @@ public class CarParkManagementSystem {
                     System.out.println("Exiting.");
                     return;
                 default:
-                    System.out.println("Invalid choice. Press Enter to continue.");
+                    System.out.println("Invalid selection — press Enter to continue.");
                     scanner.nextLine();
             }
         }
@@ -418,7 +418,9 @@ public class CarParkManagementSystem {
         System.out.printf("%-6s %-6s %-12s %-10s %-12s%n", "Floor", "Slot#", "SlotType", "Status", "Plate");
         for (int floor : snapshot.keySet()) {
             List<ParkingSlot> slots = snapshot.get(floor);
-            if (slots == null) continue;
+            if (slots == null) {
+                continue;
+            }
             for (ParkingSlot slot : slots) {
                 String status = slot.getCurrentVehicle() == null ? "VACANT" : "OCCUPIED";
                 String plate = slot.getCurrentVehicle() == null ? "-" : slot.getCurrentVehicle().getPlateNumber();
@@ -449,16 +451,20 @@ public class CarParkManagementSystem {
         int scooters = 0;
         int bigBikes = 0; // large motorcycles / big bikes
         int evs = 0;
-        int pwd = 0; // count of PWD-parked vehicles (regardless of type)
+        int pwd = 0; // count of PWD drivers among parked vehicles
         int unknown = 0;
 
         for (List<ParkingSlot> slots : snapshot.values()) {
-            if (slots == null) continue;
+            if (slots == null) {
+                continue;
+            }
             for (ParkingSlot slot : slots) {
                 Vehicle v = slot.getCurrentVehicle();
-                if (v == null) continue;
+                if (v == null) {
+                    continue;
+                }
                 String vtype = safeLower(v.getType());
-                if (vtype.equals("ev")) {
+                if (vtype.equalsIgnoreCase("ev") || "ev".equalsIgnoreCase(v.getType())) {
                     evs++;
                 } else if (v instanceof Motorcycle) {
                     int cc = ((Motorcycle) v).getEngineCC();
@@ -467,7 +473,7 @@ public class CarParkManagementSystem {
                     } else {
                         bigBikes++;
                     }
-                } else if (vtype.equals("car")) {
+                } else if (vtype.equalsIgnoreCase("car") || "car".equalsIgnoreCase(v.getType())) {
                     cars++;
                 } else {
                     // fallback: infer from slot type
@@ -476,13 +482,14 @@ public class CarParkManagementSystem {
                         case "evslot": evs++; break;
                         case "scooterslot": scooters++; break;
                         case "carslot": cars++; break;
-                        case "pwdslot": pwd++; break;
                         default: unknown++; break;
                     }
                 }
-                if (slot instanceof PWDSlot) {
-                    pwd++;
-                }
+
+                // Count PWD by the vehicle's registered attribute (avoid double-counting via slot types)
+                try {
+                    if (v.isPwdDriver()) pwd++;
+                } catch (Exception ignored) {}
             }
         }
 
@@ -643,14 +650,16 @@ public class CarParkManagementSystem {
             return;
         }
         // Simpler policy: require the operator to perform PULL-OUT (exit) first, then use PAYMENT.
-        System.err.println("Payment is disabled for parked vehicles in this mode.");
-        System.err.println("Please perform PULL-OUT (Parking Operations -> PULL-OUT VEHICLE) first, then use PAYMENT to record payment if needed.");
+        System.out.println("Payment from this menu is disabled for currently parked vehicles.");
+        System.out.println("Please use 'PULL-OUT VEHICLE' (under Parking Operations) to process payment and exit.");
         pause();
     }
 
     // Attempt to persist a transaction via storageService; returns true on success
     private boolean tryPersistTransaction(Transaction tx) {
-        if (tx == null) return false;
+        if (tx == null) {
+            return false;
+        }
         try {
             storageService.appendTransaction(tx);
             System.out.println("Transaction persisted to " + storageService.getPath());
@@ -694,7 +703,9 @@ public class CarParkManagementSystem {
         System.out.println("SAVE STATE");
         try {
             Path dataDir = Paths.get("data");
-            if (!Files.exists(dataDir)) Files.createDirectories(dataDir);
+            if (!Files.exists(dataDir)) {
+                Files.createDirectories(dataDir);
+            }
 
             Path vehiclesPath = dataDir.resolve("vehicles.txt");
             try (BufferedWriter bw = Files.newBufferedWriter(vehiclesPath, StandardCharsets.UTF_8)) {
@@ -744,10 +755,16 @@ public class CarParkManagementSystem {
             String line;
                 while ((line = br.readLine()) != null) {
                     line = line.trim();
-                    if (line.isEmpty()) continue;
+                    if (line.isEmpty()) {
+                        continue;
+                    }
                     // Skip header/comment lines that start with '#' or a CSV header 'plate,'
-                    if (line.startsWith("#")) continue;
-                    if (line.toLowerCase().startsWith("plate,")) continue;
+                    if (line.startsWith("#")) {
+                        continue;
+                    }
+                    if (line.toLowerCase().startsWith("plate,")) {
+                        continue;
+                    }
 
                     // Accept either pipe-delimited or comma-delimited lines for backward compatibility
                     String[] parts;
@@ -756,9 +773,13 @@ public class CarParkManagementSystem {
                     } else if (line.contains(",")) {
                         parts = line.split(",", -1);
                     } else {
-                        skipped++; continue;
+                        skipped++;
+                        continue;
                     }
-                    if (parts.length < 5) { skipped++; continue; }
+                    if (parts.length < 5) {
+                        skipped++;
+                        continue;
+                    }
                     String plate = parts[0].trim();
                     String type = parts[1].trim();
                     double height = parseDoubleOrDefault(parts[2].trim(), 0.0);
@@ -769,7 +790,9 @@ public class CarParkManagementSystem {
                 loaded++;
             }
             System.out.println("Loaded " + loaded + " vehicle(s) from " + vehiclesPath.toString());
-            if (skipped > 0) System.out.println("Skipped " + skipped + " malformed line(s) while loading vehicles.");
+            if (skipped > 0) {
+                System.out.println("Skipped " + skipped + " malformed line(s) while loading vehicles.");
+            }
         } catch (IOException ioe) {
             System.out.println("Failed to load state: " + ioe.getMessage());
         }
@@ -782,7 +805,9 @@ public class CarParkManagementSystem {
         System.out.println("EXPORT FILE (currently parked vehicles)");
         Path exportsDir = Paths.get("exports");
         try {
-            if (!Files.exists(exportsDir)) Files.createDirectories(exportsDir);
+            if (!Files.exists(exportsDir)) {
+                Files.createDirectories(exportsDir);
+            }
         } catch (IOException ignored) {}
 
         Path out = exportsDir.resolve("parked.txt");
@@ -797,10 +822,14 @@ public class CarParkManagementSystem {
             Map<Integer, List<ParkingSlot>> snapshot = parkingLot.getFloorsSnapshot();
             if (snapshot != null) {
                 for (List<ParkingSlot> slots : snapshot.values()) {
-                    if (slots == null) continue;
+                    if (slots == null) {
+                        continue;
+                    }
                     for (ParkingSlot slot : slots) {
                         Vehicle v = slot.getCurrentVehicle();
-                        if (v == null) continue;
+                        if (v == null) {
+                            continue;
+                        }
                         String plate = padColumn(v.getPlateNumber(), 8);
                         String type = padColumn(v.getType(), 8);
                         String entry = padColumn(formatMillis(slot.getEntryTime()), 20);
@@ -826,7 +855,9 @@ public class CarParkManagementSystem {
 
     private double parseDoubleOrDefault(String s, double d) {
         try {
-            if (s == null || s.isEmpty()) return d;
+            if (s == null || s.isEmpty()) {
+                return d;
+            }
             return Double.parseDouble(s);
         } catch (Exception ex) {
             return d;
@@ -835,7 +866,9 @@ public class CarParkManagementSystem {
 
     private int parseIntOrDefault(String s, int d) {
         try {
-            if (s == null || s.isEmpty()) return d;
+            if (s == null || s.isEmpty()) {
+                return d;
+            }
             return Integer.parseInt(s);
         } catch (Exception ex) {
             return d;
@@ -848,7 +881,9 @@ public class CarParkManagementSystem {
 
     // Human-readable formatter for epoch millis using system default zone
     private String formatMillis(long epochMillis) {
-        if (epochMillis <= 0L) return "N/A";
+        if (epochMillis <= 0L) {
+            return "N/A";
+        }
         try {
             return HUMAN_TS_FMT.format(Instant.ofEpochMilli(epochMillis));
         } catch (Exception ex) {
@@ -858,14 +893,20 @@ public class CarParkManagementSystem {
 
     // Helper used for saving text fields
     private String safeForFile(String s) {
-        if (s == null) return "";
+        if (s == null) {
+            return "";
+        }
         return s.replace("|", " ").replace("\n", " ").trim();
     }
 
     // Pad a column to a minimum width (right-pad with spaces). Does not truncate.
     private String padColumn(String s, int minWidth) {
-        if (s == null) s = "";
-        if (s.length() >= minWidth) return s;
+        if (s == null) {
+            s = "";
+        }
+        if (s.length() >= minWidth) {
+            return s;
+        }
         StringBuilder sb = new StringBuilder(s);
         while (sb.length() < minWidth) sb.append(' ');
         return sb.toString();
@@ -875,7 +916,9 @@ public class CarParkManagementSystem {
 
     // Remove vehicle immediately without billing. Returns the removed Vehicle or null.
     public Vehicle pullOutOnly(String plate) {
-        if (plate == null || plate.isEmpty()) return null;
+        if (plate == null || plate.isEmpty()) {
+            return null;
+        }
         return parkingLot.removeVehicleByPlate(plate);
     }
 
@@ -884,22 +927,33 @@ public class CarParkManagementSystem {
      * Returns a printable receipt on success, or an error message on failure.
      */
     public String billThenPullOut(String plate, String method, double cashGiven, String cardNumber, String cardHolder) {
-        if (plate == null || plate.isEmpty()) return "Invalid plate";
+        if (plate == null || plate.isEmpty()) {
+            return "Invalid plate";
+        }
 
         ParkingSlot slot = parkingLot.findSlotByPlate(plate);
-        if (slot == null) return "Plate not found in parking lot";
+        if (slot == null) {
+            return "Plate not found in parking lot";
+        }
 
         Vehicle v = slot.getCurrentVehicle();
-        if (v == null) return "No vehicle in slot for plate";
+        if (v == null) {
+            return "No vehicle in slot for plate";
+        }
 
         long entry = slot.getEntryTime();
         long exit = System.currentTimeMillis();
 
+        // Compute fee first and construct payment with the correct amount
+        double fee = billingService.computeFee(v, entry, exit);
         Payment payment;
         if ("CASH".equalsIgnoreCase(method)) {
-            payment = new CashPayment(0.0, cashGiven);
+            if (cashGiven < fee) {
+                return "Insufficient cash provided (required: " + String.format("%.2f", fee) + ")";
+            }
+            payment = new CashPayment(fee, cashGiven);
         } else if ("CARD".equalsIgnoreCase(method)) {
-            payment = new CardPayment(0.0, cardNumber, cardHolder);
+            payment = new CardPayment(fee, cardNumber, cardHolder);
         } else {
             return "Unsupported payment method";
         }
