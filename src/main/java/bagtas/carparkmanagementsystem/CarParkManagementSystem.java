@@ -80,6 +80,8 @@ public class CarParkManagementSystem {
         System.out.println();
         System.out.println("Multi-Level Parking Management System");
         System.out.println("\t\tMain Menu");
+        System.out.println("OPENING HOURS : 10:00 a.m");
+        System.out.println("CLOSING HOURS  : 10:00 p.m");
         System.out.println("[1] - VEHICLE RECORDS");
         System.out.println("[2] - PARKING OPERATIONS");
         System.out.println("[3] - OCCUPANCY & TRACKING");
@@ -106,7 +108,9 @@ public class CarParkManagementSystem {
                     deleteVehicle();
                     break;
                 default:
-                    return;
+                    System.out.println("Invalid selection — press Enter to continue.");
+                    scanner.nextLine();
+                    break;
             }
         }
     }
@@ -211,7 +215,9 @@ public class CarParkManagementSystem {
                     pullOutVehicleFlow();
                     break;
                 default:
-                    return;
+                    System.out.println("Invalid selection — press Enter to continue.");
+                    scanner.nextLine();
+                    break;
             }
         }
     }
@@ -407,7 +413,9 @@ public class CarParkManagementSystem {
                     searchVehicleByPlate();
                     break;
                 default:
-                    return;
+                    System.out.println("Invalid selection — press Enter to continue.");
+                    scanner.nextLine();
+                    break;
             }
         }
     }
@@ -573,7 +581,9 @@ public class CarParkManagementSystem {
                     paymentFlow();
                     break;
                 default:
-                    return;
+                    System.out.println("Invalid selection — press Enter to continue.");
+                    scanner.nextLine();
+                    break;
             }
         }
     }
@@ -726,7 +736,9 @@ public class CarParkManagementSystem {
                     exportParkedFlow();
                     break;
                 default:
-                    return;
+                    System.out.println("Invalid selection — press Enter to continue.");
+                    scanner.nextLine();
+                    break;
             }
         }
     }
