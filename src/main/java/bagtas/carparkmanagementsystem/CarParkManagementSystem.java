@@ -135,8 +135,10 @@ public class CarParkManagementSystem {
     }
 
     // Validate vehicle type input and handle domain error here
-    if (!"car".equals(type) && !"motorcycle".equals(type) && !"scooter".equals(type) && !"ev".equals(type)) {
-        System.err.println("Unsupported vehicle type: " + type);
+    try {
+        validateVehicleType(type);
+    } catch (InvalidVehicleTypeException ive) {
+        System.err.println(ive.getMessage());
         pause();
         return;
     }
@@ -314,68 +316,75 @@ public class CarParkManagementSystem {
     long entry = slot.getEntryTime();
     long exit = System.currentTimeMillis();
 
-    // Step 1: Compute Fee
-    double fee = billingService.computeFee(v, entry, exit);
-    System.out.println();
-    System.out.println("Vehicle found in " + slot.getSlotType()
-            + " on floor " + slot.getFloorNumber()
-            + " slot #" + slot.getSlotNumber());
-    System.out.printf("Parking Fee: %.2f%n", fee);
-    System.out.println("Entry: " + formatMillis(entry));
-    System.out.println("Exit : " + formatMillis(exit));
-
-    // Step 2: Choose payment method
-    System.out.println();
-    System.out.println("Select payment method:");
-    System.out.println("[1] - CASH");
-    System.out.println("[2] - CARD");
-    System.out.print("Choose: ");
-    String pm = scanner.nextLine().trim();
-
-    Payment payment = null;
-    if ("1".equals(pm)) {
-        System.out.print("Enter cash amount: ");
-        double cash = parseDoubleOrDefault(scanner.nextLine().trim(), 0.0);
-        payment = new CashPayment(fee, cash);
-    } else if ("2".equals(pm)) {
-        System.out.print("Enter card number: ");
-        String cn = scanner.nextLine().trim();
-        System.out.print("Enter card holder: ");
-        String ch = scanner.nextLine().trim();
-        payment = new CardPayment(fee, cn, ch);
-    } else {
-        System.out.println("Invalid payment method. Pull-out cancelled.");
-        pause();
-        return;
+    // Remove vehicle first (operator requested pull-out), then process payment via paymentFlow
+    try {
+        Vehicle removed = parkingLot.removeVehicleByPlate(plate);
+        if (removed == null) {
+            System.err.println("Failed to remove vehicle from parking lot.");
+        } else {
+            boolean ok = paymentFlow(v, plate, entry, exit);
+            if (ok) {
+                System.out.println("Vehicle successfully pulled out and billed.");
+            } else {
+                System.out.println("Pull-out completed but payment was not recorded.");
+            }
+        }
+    } catch (InvalidPaymentException ipe) {
+        System.err.println("Payment error: " + ipe.getMessage());
     }
-
-    // Step 3: Process payment
-    Transaction[] out = new Transaction[1];
-    PaymentResult pr = billingService.payAndCreateTransaction(v, entry, exit, payment, out);
-
-    if (!pr.isSuccess()) {
-        System.err.println("Payment failed: " + pr.getMessage());
-        pause();
-        return;
-    }
-
-    // Step 4: Persist transaction
-    tryPersistTransaction(out[0]);
-
-    // Step 5: Remove vehicle
-    parkingLot.removeVehicleByPlate(plate);
-
-    // Step 6: Display receipt
-    String receipt = ReceiptPrinter.renderReceipt(out[0], v, pr);
-    System.out.println("\n--- RECEIPT ---");
-    System.out.println(receipt);
-    System.out.println("Entry: " + formatMillis(entry));
-    System.out.println("Exit : " + formatMillis(exit));
-    System.out.println("----------------");
-
-    System.out.println("Vehicle successfully billed and pulled out.");
     pause();
 }
+
+    // Overloaded paymentFlow: process payment/persistence/receipt for an already-removed vehicle
+    private boolean paymentFlow(Vehicle v, String plate, long entry, long exit) throws InvalidPaymentException {
+        if (v == null) throw new IllegalArgumentException("vehicle is null");
+        double fee = billingService.computeFee(v, entry, exit);
+        System.out.println();
+        System.out.println("Vehicle (plate " + plate + ") - processing payment");
+        System.out.printf("Parking Fee: %.2f%n", fee);
+        System.out.println("Entry: " + formatMillis(entry));
+        System.out.println("Exit : " + formatMillis(exit));
+
+        System.out.println();
+        System.out.println("Select payment method:");
+        System.out.println("[1] - CASH");
+        System.out.println("[2] - CARD");
+        System.out.print("Choose: ");
+        String pm = scanner.nextLine().trim();
+
+        Payment payment = null;
+        if ("1".equals(pm)) {
+            System.out.print("Enter cash amount: ");
+            double cash = parseDoubleOrDefault(scanner.nextLine().trim(), 0.0);
+            payment = new CashPayment(fee, cash);
+        } else if ("2".equals(pm)) {
+            System.out.print("Enter card number: ");
+            String cn = scanner.nextLine().trim();
+            System.out.print("Enter card holder: ");
+            String ch = scanner.nextLine().trim();
+            payment = new CardPayment(fee, cn, ch);
+        } else {
+            throw new InvalidPaymentException("Unsupported payment method: " + pm);
+        }
+
+        Transaction[] out = new Transaction[1];
+        PaymentResult pr = billingService.payAndCreateTransaction(v, entry, exit, payment, out);
+        if (!pr.isSuccess()) {
+            System.err.println("Payment failed: " + pr.getMessage());
+            return false;
+        }
+
+        // Persist (vehicle already removed by caller)
+        tryPersistTransaction(out[0]);
+
+        String receipt = ReceiptPrinter.renderReceipt(out[0], v, pr);
+        System.out.println("\n--- RECEIPT ---");
+        System.out.println(receipt);
+        System.out.println("Entry: " + formatMillis(entry));
+        System.out.println("Exit : " + formatMillis(exit));
+        System.out.println("----------------");
+        return true;
+    }
 
     private void occupancyTrackingMenu() {
         while (true) {
@@ -649,9 +658,34 @@ public class CarParkManagementSystem {
             pause();
             return;
         }
-        // Simpler policy: require the operator to perform PULL-OUT (exit) first, then use PAYMENT.
-        System.out.println("Payment from this menu is disabled for currently parked vehicles.");
-        System.out.println("Please use 'PULL-OUT VEHICLE' (under Parking Operations) to process payment and exit.");
+
+        // Allow operator to confirm pull-out then process payment from this menu
+        System.out.print("Confirm pull-out and process payment now? (y/n): ");
+        String confirm = scanner.nextLine().trim().toLowerCase();
+        if (!"y".equals(confirm) && !"yes".equals(confirm)) {
+            System.out.println("Cancelled. Use PULL-OUT VEHICLE to perform exit later.");
+            pause();
+            return;
+        }
+
+        long entry = slot.getEntryTime();
+        long exit = System.currentTimeMillis();
+
+        try {
+            Vehicle removed = parkingLot.removeVehicleByPlate(plate);
+            if (removed == null) {
+                System.err.println("Failed to remove vehicle from parking lot.");
+            } else {
+                boolean ok = paymentFlow(v, plate, entry, exit);
+                if (ok) {
+                    System.out.println("Payment processed and vehicle pulled out.");
+                } else {
+                    System.out.println("Pull-out completed but payment was not recorded.");
+                }
+            }
+        } catch (InvalidPaymentException ipe) {
+            System.err.println("Payment error: " + ipe.getMessage());
+        }
         pause();
     }
 
@@ -872,6 +906,17 @@ public class CarParkManagementSystem {
             return Integer.parseInt(s);
         } catch (Exception ex) {
             return d;
+        }
+    }
+
+    // Validate vehicle type and throw a domain exception when unsupported
+    private void validateVehicleType(String type) throws InvalidVehicleTypeException {
+        if (type == null) {
+            throw new InvalidVehicleTypeException("Vehicle type is required");
+        }
+        String t = type.trim().toLowerCase();
+        if (!"car".equals(t) && !"motorcycle".equals(t) && !"scooter".equals(t) && !"ev".equals(t)) {
+            throw new InvalidVehicleTypeException("Unsupported vehicle type: " + type);
         }
     }
 
