@@ -148,7 +148,7 @@ private void registerVehicle() {
         return;
     }
 
-    // === Height is now REQUIRED ===
+    //  Height is now REQUIRED 
     double height = 0.0;
     while (true) {
         System.out.print("Height in meters (required): ");
