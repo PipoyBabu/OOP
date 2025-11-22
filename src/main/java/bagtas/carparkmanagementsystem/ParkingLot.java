@@ -24,7 +24,7 @@ import java.util.Map;
  */
 public class ParkingLot {
     public static final int MAX_FLOORS = 3;
-    public static final double DEFAULT_CLEARANCE_M = 2.1;
+    public static final double DEFAULT_CLEARANCE_M = 2.4;
 
     // floorDistribution[floorIndex][slotTypeIndex]
     // slotTypeIndex mapping: 0 = Scooter, 1 = EV, 2 = Car, 3 = PWD
