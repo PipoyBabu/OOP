@@ -632,12 +632,12 @@ private Double parseDoubleStrict(String s) {
         // Print example values by constructing sample Vehicles when possible
         try {
             Vehicle sampleCar = new Car("SAMPLE", 1.6, false);
-            System.out.printf(" Car  : base=%.2f, baseHours=%d, rate=%.2f, overnight=%.2f%n",
+            System.out.printf(" Car  : base = %.2f, baseHours = %d, rate = %.2f, overnight = %.2f%n",
                 sampleCar.getBasePrice(), sampleCar.getBaseHours(), sampleCar.getRatePerHour(), sampleCar.getOvernightFee());
         } catch (Exception ignored) {}
         try {
             Motorcycle sampleMoto = new Motorcycle("SAMPLE", 1.1, 150);
-            System.out.printf(" Motorcycle/scooter : base=%.2f, baseHours=%d, rate=%.2f, overnight=%.2f%n",
+            System.out.printf(" Motorcycle/scooter : base = %.2f, baseHours = %d, rate = %.2f, overnight = %.2f%n",
                 sampleMoto.getBasePrice(), sampleMoto.getBaseHours(), sampleMoto.getRatePerHour(), sampleMoto.getOvernightFee());
         } catch (Exception ignored) {}
         pause();
