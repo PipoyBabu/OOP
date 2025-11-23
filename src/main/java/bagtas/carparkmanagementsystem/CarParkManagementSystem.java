@@ -810,20 +810,20 @@ private Double parseDoubleStrict(String s) {
             try (BufferedWriter bw = Files.newBufferedWriter(vehiclesPath, StandardCharsets.UTF_8)) {
                 // Write documented header (pipe-delimited) per user preference - aligned columns
                 // Prefix header with '#' so the loader can skip it safely.
-                String h0 = padColumn("Plate", 25);
-                String h1 = padColumn("Type", 25);
-                String h2 = padColumn("Height", 25);
-                String h3 = padColumn("EngineCc", 25);
-                String h4 = padColumn("PWD", 25);
+                String h0 = padColumn("Plate", 27);
+                String h1 = padColumn("Type", 27);
+                String h2 = padColumn("Height", 27);
+                String h3 = padColumn("EngineCc", 27);
+                String h4 = padColumn("PWD", 27);
                 bw.write("# " + h0 + " | " + h1 + " | " + h2 + " | " + h3 + " | " + h4);
                 bw.newLine();
                 // Pipe-delimited line format with minimum column widths
                 for (VehicleRecord r : registry.values()) {
-                    String p0 = padColumn(safeForFile(r.plate), 25);
-                    String p1 = padColumn(safeForFile(r.type), 25);
-                    String p2 = padColumn(String.format("%.2f", r.height), 25);
-                    String p3 = padColumn(String.valueOf(r.engineCc), 25);
-                    String p4 = padColumn(r.pwd ? "1" : "0", 25);
+                    String p0 = padColumn(safeForFile(r.plate), 27);
+                    String p1 = padColumn(safeForFile(r.type), 27);
+                    String p2 = padColumn(String.format("%.2f", r.height), 27);
+                    String p3 = padColumn(String.valueOf(r.engineCc), 27);
+                    String p4 = padColumn(r.pwd ? "1" : "0", 27);
                     String line = p0 + " | " + p1 + " | " + p2 + " | " + p3 + " | " + p4;
                     bw.write(line);
                     bw.newLine();
@@ -838,7 +838,7 @@ private Double parseDoubleStrict(String s) {
             try (BufferedWriter pbw = Files.newBufferedWriter(parkedPath, StandardCharsets.UTF_8)) {
                 // header (commented so loader ignores it).
                 // Use the same column widths as the data rows so columns align.
-                String hh0 = padColumn("Plate", 25);
+                String hh0 = padColumn("Plate", 26);
                 String hh1 = padColumn("Type", 27);
                 String hh2 = padColumn("Height", 27);
                 String hh3 = padColumn("EngineCc", 27);
