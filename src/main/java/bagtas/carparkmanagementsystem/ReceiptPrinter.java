@@ -49,7 +49,7 @@ public final class ReceiptPrinter {
 
     public static String renderReceipt(Transaction tx, Vehicle v, PaymentResult pr) {
         StringBuilder sb = new StringBuilder();
-        sb.append("BAGTAS PARKING MANAGEMENT\n");
+        sb.append("MULTI-LEVEL PARKING MANAGEMENT\n");
         sb.append("Receipt: ").append(tx.getId()).append("\n");
         sb.append("Printed: ").append(fmt(tx.getExitTime())).append("\n");
         sb.append("----------------------------------------\n");
