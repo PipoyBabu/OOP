@@ -820,11 +820,11 @@ private Double parseDoubleStrict(String s) {
                 bw.newLine();
                 // Pipe-delimited line format with minimum column widths
                 for (VehicleRecord r : registry.values()) {
-                    String p0 = padColumn(safeForFile(r.plate), 15);
-                    String p1 = padColumn(safeForFile(r.type), 15);
-                    String p2 = padColumn(String.format("%.2f", r.height), 15);
-                    String p3 = padColumn(String.valueOf(r.engineCc), 15);
-                    String p4 = padColumn(r.pwd ? "1" : "0", 15);
+                    String p0 = padColumn(safeForFile(r.plate), 17);
+                    String p1 = padColumn(safeForFile(r.type), 17);
+                    String p2 = padColumn(String.format("%.2f", r.height), 17);
+                    String p3 = padColumn(String.valueOf(r.engineCc), 17);
+                    String p4 = padColumn(r.pwd ? "1" : "0", 17);
                     String line = p0 + " | " + p1 + " | " + p2 + " | " + p3 + " | " + p4;
                     bw.write(line);
                     bw.newLine();
