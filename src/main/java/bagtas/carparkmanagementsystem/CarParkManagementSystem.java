@@ -836,8 +836,16 @@ private Double parseDoubleStrict(String s) {
             // plate | type | height | engineCc | pwd | floor | slotNumber | entryMillis
             Path parkedPath = dataDir.resolve("parked.txt");
             try (BufferedWriter pbw = Files.newBufferedWriter(parkedPath, StandardCharsets.UTF_8)) {
-                // header (commented so loader ignores it)
-                pbw.write("# plate        | type        | height        | engineCc        | pwd        | floor        | slotNumber        | entryMillis");
+                // header (commented so loader ignores it). Use wide columns (35 chars) for readability.
+                String hh0 = padColumn("Plate", 35);
+                String hh1 = padColumn("Type", 35);
+                String hh2 = padColumn("Height", 35);
+                String hh3 = padColumn("EngineCc", 35);
+                String hh4 = padColumn("PWD", 35);
+                String hh5 = padColumn("Floor", 35);
+                String hh6 = padColumn("Slot#", 35);
+                String hh7 = padColumn("EntryTime", 35);
+                pbw.write("# " + hh0 + " | " + hh1 + " | " + hh2 + " | " + hh3 + " | " + hh4 + " | " + hh5 + " | " + hh6 + " | " + hh7);
                 pbw.newLine();
                 Map<Integer, List<ParkingSlot>> snapshot = parkingLot.getFloorsSnapshot();
                 if (snapshot != null) {
@@ -846,16 +854,17 @@ private Double parseDoubleStrict(String s) {
                         for (ParkingSlot slot : slots) {
                             Vehicle v = slot.getCurrentVehicle();
                             if (v == null) continue;
-                            String plate = safeForFile(v.getPlateNumber());
-                            String type = safeForFile(v.getType());
-                            String height = String.format("%.2f", v.getHeight());
+                            String plate = padColumn(safeForFile(v.getPlateNumber()), 35);
+                            String type = padColumn(safeForFile(v.getType()), 35);
+                            String height = padColumn(String.format("%.2f", v.getHeight()), 35);
                             String engine = "0";
                             if (v instanceof Motorcycle) engine = String.valueOf(((Motorcycle) v).getEngineCC());
-                            String pwd = v.isPwdDriver() ? "1" : "0";
-                            String floor = String.valueOf(slot.getFloorNumber());
-                            String slotno = String.valueOf(slot.getSlotNumber());
-                            String entry = String.valueOf(slot.getEntryTime());
-                            String line = plate + "         | " + type + "         | " + height + "           | " + engine + "          | " + pwd + "          | " + floor + "          | " + slotno + "          | " + entry;
+                            engine = padColumn(engine, 35);
+                            String pwd = padColumn(v.isPwdDriver() ? "1" : "0", 35);
+                            String floor = padColumn(String.valueOf(slot.getFloorNumber()), 35);
+                            String slotno = padColumn(String.valueOf(slot.getSlotNumber()), 35);
+                            String entry = padColumn(formatMillis(slot.getEntryTime()), 35);
+                            String line = plate + " | " + type + " | " + height + " | " + engine + " | " + pwd + " | " + floor + " | " + slotno + " | " + entry;
                             pbw.write(line);
                             pbw.newLine();
                         }
