@@ -90,7 +90,86 @@ public class CarParkManagementSystem {
         System.out.println("[6] - EXIT");
         System.out.print("Choose an option: ");
     }
+package bagtas.carparkmanagementsystem;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Scanner;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+
+public class CarParkManagementSystem {
+    private final Scanner scanner;
+    private final Map<String, VehicleRecord> registry = new LinkedHashMap<>();
+    private final ParkingLot parkingLot = new ParkingLot();
+    private final BillingService billingService = new BillingService();
+    private final StorageService storageService = new StorageService("data/transactions.txt");
+    private static final DateTimeFormatter HUMAN_TS_FMT =
+        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault());
+
+    public CarParkManagementSystem() {
+        this.scanner = new Scanner(System.in);
+    }
+
+    // Main loop: show menu and dispatch choices.
+    public void start() {
+        while (true) {
+            printMenu();
+            String choice = scanner.nextLine().trim();
+            switch (choice) {
+                case "1":
+                    vehicleRecordsMenu();
+                    break;
+                case "2":
+                    parkingOperationsMenu();
+                    break;
+                case "3":
+                    occupancyTrackingMenu();
+                    break;
+                case "4":
+                    billsPaymentsMenu();
+                    break;
+                case "5":
+                    dataStorageMenu();
+                    break;
+                case "6":
+                case "exit":
+                    System.out.println("Exiting.");
+                    return;
+                default:
+                    System.out.println("Invalid selection — press Enter to continue.");
+                    scanner.nextLine();
+            }
+        }
+    }
+
+    // Print the main menu.
+    private void printMenu() {
+        System.out.println();
+        System.out.println("Multi-Level Parking Management System");
+        System.out.println("\t\tMain Menu");
+        System.out.println();
+        System.out.println("OPENING HOURS : 10:00 a.m");
+        System.out.println("CLOSING HOURS : 10:00 p.m");
+        System.out.println("[1] - VEHICLE RECORDS");
+        System.out.println("[2] - PARKING OPERATIONS");
+        System.out.println("[3] - OCCUPANCY & TRACKING");
+        System.out.println("[4] - BILLS & PAYMENTS");
+        System.out.println("[5] - DATA STORAGE");
+        System.out.println("[6] - EXIT");
+        System.out.print("Choose an option: ");
+    }
+
+    // Vehicle records menu.
     private void vehicleRecordsMenu() {
         while (true) {
             System.out.println();
@@ -117,105 +196,98 @@ public class CarParkManagementSystem {
         }
     }
 
+    // Register a vehicle in the registry.
+    private void registerVehicle() {
+        System.out.println();
+        System.out.println("REGISTER VEHICLE");
 
-private void registerVehicle() {
-    System.out.println();
-    System.out.println("REGISTER VEHICLE");
-
-    System.out.print("Plate number (required): ");
-    String plate = scanner.nextLine().trim();
-    if (plate.isEmpty()) {
-        System.out.println("Plate number cannot be empty.");
-        pause();
-        return;
-    }
-    if (registry.containsKey(plate)) {
-        System.out.println("A vehicle with that plate is already registered.");
-        pause();
-        return;
-    }
-
-    System.out.print("Vehicle type (car/motorcycle/ev) [default: car]: ");
-    String type = scanner.nextLine().trim().toLowerCase();
-    if (type.isEmpty()) {
-        type = "car";
-    }
-
-    // Validate vehicle type input and handle domain error here
-    try {
-        validateVehicleType(type);
-    } catch (InvalidVehicleTypeException ive) {
-        System.err.println(ive.getMessage());
-        pause();
-        return;
-    }
-    // Normalize scooter to motorcycle: scooters are modeled as motorcycles with small engine CC
-    boolean normalizedFromScooter = false;
-    if ("scooter".equals(type)) {
-        type = "motorcycle";
-        normalizedFromScooter = true;
-        System.out.println("Note: 'scooter' normalized to 'motorcycle' — engine CC will determine slot.");
-    }
-
-    // Height is required; parse once and throw domain exception on invalid input so
-    // the custom exception handling can apply instead of looping here.
-    double height = 0.0;
-    System.out.print("Height in meters (required): ");
-    String h = scanner.nextLine().trim();
-    Double parsed = parseDoubleStrict(h);
-    try {
-        if (h.isEmpty() || parsed == null) {
-            throw new InvalidVehicleHeightException("Invalid or missing height: please provide numeric height in meters");
+        System.out.print("Plate number (required): ");
+        String plate = scanner.nextLine().trim();
+        if (plate.isEmpty()) {
+            System.out.println("Plate number cannot be empty.");
+            pause();
+            return;
         }
-        if (parsed <= 0.0) {
-            throw new InvalidVehicleHeightException("Height must be greater than 0");
+        if (registry.containsKey(plate)) {
+            System.out.println("A vehicle with that plate is already registered.");
+            pause();
+            return;
         }
-        if (parsed > ParkingLot.DEFAULT_CLEARANCE_M) {
-            throw new InvalidVehicleHeightException("Height " + parsed + "m exceeds maximum allowed clearance of " + ParkingLot.DEFAULT_CLEARANCE_M + "m");
+
+        System.out.print("Vehicle type (car/motorcycle/ev) [default: car]: ");
+        String type = scanner.nextLine().trim().toLowerCase();
+        if (type.isEmpty()) {
+            type = "car";
         }
-        height = parsed;
-    } catch (InvalidVehicleHeightException ivhe) {
-        System.err.println(ivhe.getMessage());
+
+        try {
+            validateVehicleType(type);
+        } catch (InvalidVehicleTypeException ive) {
+            System.err.println(ive.getMessage());
+            pause();
+            return;
+        }
+        boolean normalizedFromScooter = false;
+        if ("scooter".equals(type)) {
+            type = "motorcycle";
+            normalizedFromScooter = true;
+            System.out.println("Note: 'scooter' normalized to 'motorcycle' — engine CC will determine slot.");
+        }
+
+        double height = 0.0;
+        System.out.print("Height in meters (required): ");
+        String h = scanner.nextLine().trim();
+        Double parsed = parseDoubleStrict(h);
+        try {
+            if (h.isEmpty() || parsed == null) {
+                throw new InvalidVehicleHeightException("Invalid or missing height: please provide numeric height in meters");
+            }
+            if (parsed <= 0.0) {
+                throw new InvalidVehicleHeightException("Height must be greater than 0");
+            }
+            if (parsed > ParkingLot.DEFAULT_CLEARANCE_M) {
+                throw new InvalidVehicleHeightException("Height " + parsed + "m exceeds maximum allowed clearance of " + ParkingLot.DEFAULT_CLEARANCE_M + "m");
+            }
+            height = parsed;
+        } catch (InvalidVehicleHeightException ivhe) {
+            System.err.println(ivhe.getMessage());
+            pause();
+            return;
+        }
+
+        int engineCc = 0;
+        if ("motorcycle".equals(type)) {
+            System.out.print("Engine CC (press Enter for default 150): ");
+            String cc = scanner.nextLine().trim();
+            engineCc = parseIntOrDefault(cc, 150);
+            if (normalizedFromScooter && engineCc <= 0) engineCc = 150;
+        }
+
+        boolean isPwd = false;
+        System.out.print("Is driver PWD? (y/n, press Enter for n): ");
+        String pwd = scanner.nextLine().trim().toLowerCase();
+        if ("y".equals(pwd) || "yes".equals(pwd)) {
+            isPwd = true;
+        }
+
+        VehicleRecord record = new VehicleRecord(plate, type, height, engineCc, isPwd);
+        registry.put(plate, record);
+
+        System.out.println("Vehicle registered:");
+        System.out.println(record);
         pause();
-        return;
     }
 
-    int engineCc = 0;
-    if ("motorcycle".equals(type)) {
-        System.out.print("Engine CC (press Enter for default 150): ");
-        String cc = scanner.nextLine().trim();
-        engineCc = parseIntOrDefault(cc, 150);
-        if (normalizedFromScooter && engineCc <= 0) engineCc = 150;
+    // Parse double strictly or return null.
+    private Double parseDoubleStrict(String s) {
+        try {
+            return Double.parseDouble(s);
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
-    boolean isPwd = false;
-    System.out.print("Is driver PWD? (y/n, press Enter for n): ");
-    String pwd = scanner.nextLine().trim().toLowerCase();
-    if ("y".equals(pwd) || "yes".equals(pwd)) {
-        isPwd = true;
-    }
-
-    VehicleRecord record = new VehicleRecord(plate, type, height, engineCc, isPwd);
-    registry.put(plate, record);
-
-    System.out.println("Vehicle registered:");
-    System.out.println(record);
-    pause();
-}
-
-/**
- * Strict double parser: returns null if parsing fails.
- */
-private Double parseDoubleStrict(String s) {
-    try {
-        return Double.parseDouble(s);
-    } catch (NumberFormatException e) {
-        return null;
-    }
-}
-
-
-
+    // Delete a registered vehicle.
     private void deleteVehicle() {
         System.out.print("Enter plate to delete: ");
         String plate = scanner.nextLine().trim();
@@ -229,6 +301,7 @@ private Double parseDoubleStrict(String s) {
         pause();
     }
 
+    // Parking operations menu.
     private void parkingOperationsMenu() {
         while (true) {
             System.out.println();
@@ -255,7 +328,7 @@ private Double parseDoubleStrict(String s) {
         }
     }
 
-    // now uses parkingLot.parkOrThrow to make allocation/duplicate errors explicit
+    // Park a vehicle using the registry data.
     private void parkVehicleFlow() {
         System.out.println();
         System.out.println("PARK VEHICLE");
@@ -289,7 +362,6 @@ private Double parseDoubleStrict(String s) {
             v = m;
         }
 
-        // Consistent internal handling: check duplicate plate and height, then attempt non-throwing park
         if (parkingLot.findSlotByPlate(plate) != null) {
             System.err.println("A vehicle with that plate is already parked.");
             pause();
@@ -332,45 +404,44 @@ private Double parseDoubleStrict(String s) {
         pause();
     }
 
+    // Pull-out flow: process payment then remove vehicle.
     private void pullOutVehicleFlow() {
-    System.out.println();
-    System.out.println("PULL-OUT VEHICLE");
-    System.out.print("Enter plate number to pull out: ");
-    String plate = scanner.nextLine().trim();
+        System.out.println();
+        System.out.println("PULL-OUT VEHICLE");
+        System.out.print("Enter plate number to pull out: ");
+        String plate = scanner.nextLine().trim();
 
-    if (plate.isEmpty()) {
-        System.out.println("Plate cannot be empty.");
-        pause();
-        return;
-    }
-
-    ParkingSlot slot = parkingLot.findSlotByPlate(plate);
-    if (slot == null) {
-        System.err.println("Vehicle not found in any slot.");
-        pause();
-        return;
-    }
-
-    Vehicle v = slot.getCurrentVehicle();
-    long entry = slot.getEntryTime();
-    long exit = System.currentTimeMillis();
-
-    // Process payment first; only remove vehicle after successful payment so
-    // we don't lose parked vehicles if payment fails.
-    try {
-        boolean ok = paymentFlow(v, plate, entry, exit);
-        if (ok) {
-            System.out.println("Vehicle successfully pulled out and billed.");
-        } else {
-            System.out.println("Payment not recorded. Vehicle remains parked.");
+        if (plate.isEmpty()) {
+            System.out.println("Plate cannot be empty.");
+            pause();
+            return;
         }
-    } catch (InvalidPaymentException ipe) {
-        System.err.println("Payment error: " + ipe.getMessage());
-    }
-    pause();
-}
 
-    // Overloaded paymentFlow: process payment/persistence/receipt for an already-removed vehicle
+        ParkingSlot slot = parkingLot.findSlotByPlate(plate);
+        if (slot == null) {
+            System.err.println("Vehicle not found in any slot.");
+            pause();
+            return;
+        }
+
+        Vehicle v = slot.getCurrentVehicle();
+        long entry = slot.getEntryTime();
+        long exit = System.currentTimeMillis();
+
+        try {
+            boolean ok = paymentFlow(v, plate, entry, exit);
+            if (ok) {
+                System.out.println("Vehicle successfully pulled out and billed.");
+            } else {
+                System.out.println("Payment not recorded. Vehicle remains parked.");
+            }
+        } catch (InvalidPaymentException ipe) {
+            System.err.println("Payment error: " + ipe.getMessage());
+        }
+        pause();
+    }
+
+    // Process payment for a vehicle and persist receipt.
     private boolean paymentFlow(Vehicle v, String plate, long entry, long exit) throws InvalidPaymentException {
         if (v == null) throw new IllegalArgumentException("vehicle is null");
         double fee = billingService.computeFee(v, entry, exit);
@@ -397,7 +468,6 @@ private Double parseDoubleStrict(String s) {
             String cn = scanner.nextLine().trim();
             System.out.print("Enter card holder: ");
             String ch = scanner.nextLine().trim();
-            // Request 6-digit PIN (Philippine common practice)
             String pin = null;
             while (true) {
                 System.out.print("Enter 6-digit PIN: ");
@@ -419,15 +489,11 @@ private Double parseDoubleStrict(String s) {
             return false;
         }
 
-        // Render receipt first (caller-provided rendering) then persist the
-        // receipt file. This ensures the stored file matches the printed receipt.
         String receipt = ReceiptPrinter.renderReceipt(out[0], v, pr);
         if (!tryPersistTransaction(out[0], receipt)) {
             System.err.println("Warning: transaction could not be persisted.");
         }
 
-        // Attempt to remove the vehicle now that payment succeeded. If the
-        // caller already removed the vehicle, that's fine; otherwise remove it.
         ParkingSlot current = parkingLot.findSlotByPlate(plate);
         if (current != null) {
             Vehicle removed = parkingLot.removeVehicleByPlate(plate);
@@ -444,6 +510,7 @@ private Double parseDoubleStrict(String s) {
         return true;
     }
 
+    // Occupancy tracking menu.
     private void occupancyTrackingMenu() {
         while (true) {
             System.out.println();
@@ -474,7 +541,7 @@ private Double parseDoubleStrict(String s) {
         }
     }
 
-    // Uses the ParkingLot.getFloorsSnapshot() that your ParkingLot currently provides.
+    // Show all slots and status.
     private void showSlotsWithStatus() {
         System.out.println();
         System.out.println("SHOW SLOTS WITH STATUS");
@@ -506,7 +573,7 @@ private Double parseDoubleStrict(String s) {
         pause();
     }
 
-    // New: count vehicles by type across all floors
+    // Count parked vehicles by category.
     private void countVehiclesByType() {
         System.out.println();
         System.out.println("COUNT VEHICLES BY TYPE");
@@ -520,9 +587,9 @@ private Double parseDoubleStrict(String s) {
 
         int cars = 0;
         int scooters = 0;
-        int bigBikes = 0; // large motorcycles / big bikes
+        int bigBikes = 0;
         int evs = 0;
-        int pwd = 0; // count of PWD drivers among parked vehicles
+        int pwd = 0;
         int unknown = 0;
 
         for (List<ParkingSlot> slots : snapshot.values()) {
@@ -547,7 +614,6 @@ private Double parseDoubleStrict(String s) {
                 } else if (vtype.equalsIgnoreCase("car") || "car".equalsIgnoreCase(v.getType())) {
                     cars++;
                 } else {
-                    // fallback: infer from slot type
                     String slotType = safeLower(slot.getSlotType());
                     switch (slotType) {
                         case "evslot": evs++; break;
@@ -557,7 +623,6 @@ private Double parseDoubleStrict(String s) {
                     }
                 }
 
-                // Count PWD by the vehicle's registered attribute (avoid double-counting via slot types)
                 try {
                     if (v.isPwdDriver()) pwd++;
                 } catch (Exception ignored) {}
@@ -576,6 +641,7 @@ private Double parseDoubleStrict(String s) {
         pause();
     }
 
+    // Search registry and parked info by plate.
     private void searchVehicleByPlate() {
         System.out.println();
         System.out.println("SEARCH VEHICLE BY PLATE");
@@ -612,8 +678,7 @@ private Double parseDoubleStrict(String s) {
         pause();
     }
 
-    // --- Billing & Payments menu and flows (patched) ---
-
+    // Bills & payments menu.
     private void billsPaymentsMenu() {
         while (true) {
             System.out.println();
@@ -644,7 +709,7 @@ private Double parseDoubleStrict(String s) {
         }
     }
 
-    // Displays current fee structure. Adjust text to match your actual rates and rules if needed.
+    // Show fee rules and example values.
     private void showFeeRules() {
         System.out.println();
         System.out.println("FEE RULES AND POLICIES");
@@ -655,7 +720,6 @@ private Double parseDoubleStrict(String s) {
         System.out.println(" - PWD discount: 50% off (applies after computing fee).");
         System.out.println();
 
-        // Print example values by constructing sample Vehicles when possible
         try {
             Vehicle sampleCar = new Car("SAMPLE", 1.6, false);
             System.out.printf(" Car  : base = %.2f, baseHours = %d, rate = %.2f, overnight = %.2f%n",
@@ -669,7 +733,7 @@ private Double parseDoubleStrict(String s) {
         pause();
     }
 
-    // Computes fee and displays it (no side-effects) with human-readable timestamps
+    // Compute bill without side-effects.
     private void computeBillFlow() {
         System.out.print("Enter plate number to compute bill for: ");
         String plate = scanner.nextLine().trim();
@@ -701,7 +765,7 @@ private Double parseDoubleStrict(String s) {
         pause();
     }
 
-    // Full payment flow: preview fee, validate payment, process, persist, remove vehicle, print receipt
+    // Interactive payment via menu.
     private void paymentFlow() {
         System.out.print("Enter plate number to pay & exit: ");
         String plate = scanner.nextLine().trim();
@@ -725,7 +789,6 @@ private Double parseDoubleStrict(String s) {
             return;
         }
 
-        // Allow operator to confirm pull-out then process payment from this menu
         System.out.print("Confirm pull-out and process payment now? (y/n): ");
         String confirm = scanner.nextLine().trim().toLowerCase();
         if (!"y".equals(confirm) && !"yes".equals(confirm)) {
@@ -750,7 +813,7 @@ private Double parseDoubleStrict(String s) {
         pause();
     }
 
-    // Attempt to persist a transaction and its rendered receipt via storageService; returns true on success
+    // Persist transaction receipt via storage service.
     private boolean tryPersistTransaction(Transaction tx, String renderedReceipt) {
         if (tx == null) {
             return false;
@@ -765,7 +828,7 @@ private Double parseDoubleStrict(String s) {
         }
     }
 
-    // --- Data storage menu: Save, Load, Export ---
+    // Data storage menu (save/load/export).
     private void dataStorageMenu() {
         while (true) {
             System.out.println();
@@ -796,7 +859,7 @@ private Double parseDoubleStrict(String s) {
         }
     }
 
-    // Save registry (vehicles) to data/vehicles.txt and optionally persist transactions (no-op if none)
+    // Save registry and parked vehicles to data files.
     private void saveStateFlow() {
         System.out.println();
         System.out.println("SAVE STATE");
@@ -808,22 +871,19 @@ private Double parseDoubleStrict(String s) {
 
             Path vehiclesPath = dataDir.resolve("vehicles.txt");
             try (BufferedWriter bw = Files.newBufferedWriter(vehiclesPath, StandardCharsets.UTF_8)) {
-                // Write documented header (pipe-delimited) per user preference - aligned columns
-                // Prefix header with '#' so the loader can skip it safely.
                 String h0 = padColumn("Plate", 25);
-                String h1 = padColumn("Type", 27);
-                String h2 = padColumn("Height", 27);
-                String h3 = padColumn("EngineCc", 27);
-                String h4 = padColumn("PWD", 27);
+                String h1 = padColumn("Type", 25);
+                String h2 = padColumn("Height", 25);
+                String h3 = padColumn("EngineCc", 25);
+                String h4 = padColumn("PWD", 25);
                 bw.write("# " + h0 + " | " + h1 + " | " + h2 + " | " + h3 + " | " + h4);
                 bw.newLine();
-                // Pipe-delimited line format with minimum column widths
                 for (VehicleRecord r : registry.values()) {
                     String p0 = padColumn(safeForFile(r.plate), 27);
-                    String p1 = padColumn(safeForFile(r.type), 27);
-                    String p2 = padColumn(String.format("%.2f", r.height), 27);
-                    String p3 = padColumn(String.valueOf(r.engineCc), 27);
-                    String p4 = padColumn(r.pwd ? "1" : "0", 27);
+                    String p1 = padColumn(safeForFile(r.type), 25);
+                    String p2 = padColumn(String.format("%.2f", r.height), 25);
+                    String p3 = padColumn(String.valueOf(r.engineCc), 25);
+                    String p4 = padColumn(r.pwd ? "1" : "0", 25);
                     String line = p0 + " | " + p1 + " | " + p2 + " | " + p3 + " | " + p4;
                     bw.write(line);
                     bw.newLine();
@@ -831,13 +891,9 @@ private Double parseDoubleStrict(String s) {
                 bw.flush();
             }
 
-            // Also persist currently parked vehicles to data/parked.txt so parked state
-            // can be restored on next startup. Columns:
-            // plate | type | height | engineCc | pwd | floor | slotNumber | entryMillis
             Path parkedPath = dataDir.resolve("parked.txt");
             try (BufferedWriter pbw = Files.newBufferedWriter(parkedPath, StandardCharsets.UTF_8)) {
-                
-                String hh0 = padColumn("Plate", 24);
+                String hh0 = padColumn("Plate", 25);
                 String hh1 = padColumn("Type", 27);
                 String hh2 = padColumn("Height", 27);
                 String hh3 = padColumn("EngineCc", 27);
@@ -854,7 +910,7 @@ private Double parseDoubleStrict(String s) {
                         for (ParkingSlot slot : slots) {
                             Vehicle v = slot.getCurrentVehicle();
                             if (v == null) continue;
-                            String plate = padColumn(safeForFile(v.getPlateNumber()), 26);
+                            String plate = padColumn(safeForFile(v.getPlateNumber()), 25);
                             String type = padColumn(safeForFile(v.getType()), 27);
                             String height = padColumn(String.format("%.2f", v.getHeight()), 27);
                             String engine = "0";
@@ -880,7 +936,7 @@ private Double parseDoubleStrict(String s) {
         pause();
     }
 
-    // Load registry from data/vehicles.txt (tolerant)
+    // Load saved registry and parked state.
     private void loadStateFlow() {
         System.out.println();
         System.out.println("LOAD STATE");
@@ -895,38 +951,36 @@ private Double parseDoubleStrict(String s) {
         int skipped = 0;
         try (BufferedReader br = Files.newBufferedReader(vehiclesPath, StandardCharsets.UTF_8)) {
             String line;
-                while ((line = br.readLine()) != null) {
-                    line = line.trim();
-                    if (line.isEmpty()) {
-                        continue;
-                    }
-                    // Skip header/comment lines that start with '#' or a CSV header 'plate,'
-                    if (line.startsWith("#")) {
-                        continue;
-                    }
-                    if (line.toLowerCase().startsWith("plate,")) {
-                        continue;
-                    }
+            while ((line = br.readLine()) != null) {
+                line = line.trim();
+                if (line.isEmpty()) {
+                    continue;
+                }
+                if (line.startsWith("#")) {
+                    continue;
+                }
+                if (line.toLowerCase().startsWith("plate,")) {
+                    continue;
+                }
 
-                    // Accept either pipe-delimited or comma-delimited lines for backward compatibility
-                    String[] parts;
-                    if (line.contains("|")) {
-                        parts = line.split("\\|", -1);
-                    } else if (line.contains(",")) {
-                        parts = line.split(",", -1);
-                    } else {
-                        skipped++;
-                        continue;
-                    }
-                    if (parts.length < 5) {
-                        skipped++;
-                        continue;
-                    }
-                    String plate = parts[0].trim();
-                    String type = parts[1].trim();
-                    double height = parseDoubleOrDefault(parts[2].trim(), 0.0);
-                    int engineCc = parseIntOrDefault(parts[3].trim(), 0);
-                    boolean pwd = "1".equals(parts[4].trim()) || "true".equalsIgnoreCase(parts[4].trim());
+                String[] parts;
+                if (line.contains("|")) {
+                    parts = line.split("\\|", -1);
+                } else if (line.contains(",")) {
+                    parts = line.split(",", -1);
+                } else {
+                    skipped++;
+                    continue;
+                }
+                if (parts.length < 5) {
+                    skipped++;
+                    continue;
+                }
+                String plate = parts[0].trim();
+                String type = parts[1].trim();
+                double height = parseDoubleOrDefault(parts[2].trim(), 0.0);
+                int engineCc = parseIntOrDefault(parts[3].trim(), 0);
+                boolean pwd = "1".equals(parts[4].trim()) || "true".equalsIgnoreCase(parts[4].trim());
                 VehicleRecord rec = new VehicleRecord(plate, type, height, engineCc, pwd);
                 registry.put(plate, rec);
                 loaded++;
@@ -939,7 +993,6 @@ private Double parseDoubleStrict(String s) {
             System.out.println("Failed to load state: " + ioe.getMessage());
         }
 
-        // Attempt to load parked vehicles state (if present) and restore into ParkingLot
         Path parkedPath = Paths.get("data", "parked.txt");
         if (Files.exists(parkedPath)) {
             int restored = 0;
@@ -966,7 +1019,6 @@ private Double parseDoubleStrict(String s) {
                     long entry = 0L;
                     try { entry = Long.parseLong(parts[7].trim()); } catch (Exception ignored) {}
 
-                    // Build vehicle object similar to parkVehicleFlow
                     Vehicle v;
                     if ("ev".equalsIgnoreCase(type)) {
                         v = new Car(plate, height, pwd) {
@@ -994,7 +1046,7 @@ private Double parseDoubleStrict(String s) {
         pause();
     }
 
-    // Export currently parked vehicles to exports/vehicles_in_lot.txt in simple text format (plate, type, entry human time)
+    // Export parked vehicles to an exports file.
     private void exportParkedFlow() {
         System.out.println();
         System.out.println("EXPORT FILE (currently parked vehicles)");
@@ -1005,12 +1057,11 @@ private Double parseDoubleStrict(String s) {
             }
         } catch (IOException ignored) {}
 
-        Path out = exportsDir.resolve("vehicles_in_lot.txt");
+        Path out = exportsDir.resolve("parked_export.txt");
         int written = 0;
         try (BufferedWriter bw = Files.newBufferedWriter(out, StandardCharsets.UTF_8)) {
-            // Header with aligned columns (plate min 8, type min 26,  entry min 20)
             String hh0 = padColumn("Plate", 8);
-            String hh1 = padColumn("Type", 26);
+            String hh1 = padColumn("Type", 8);
             String hh2 = padColumn("EntryTime", 20);
             bw.write(hh0 + " | " + hh1 + " | " + hh2);
             bw.newLine();
@@ -1026,7 +1077,7 @@ private Double parseDoubleStrict(String s) {
                             continue;
                         }
                         String plate = padColumn(v.getPlateNumber(), 8);
-                        String type = padColumn(v.getType(), 26);
+                        String type = padColumn(v.getType(), 8);
                         String entry = padColumn(formatMillis(slot.getEntryTime()), 20);
                         String line = plate + " | " + type + " | " + entry;
                         bw.write(line);
@@ -1043,6 +1094,7 @@ private Double parseDoubleStrict(String s) {
         pause();
     }
 
+    // Wait for Enter.
     private void pause() {
         System.out.println("Press Enter to continue.");
         scanner.nextLine();
@@ -1070,7 +1122,7 @@ private Double parseDoubleStrict(String s) {
         }
     }
 
-    // Validate vehicle type and throw a domain exception when unsupported
+    // Validate vehicle type.
     private void validateVehicleType(String type) throws InvalidVehicleTypeException {
         if (type == null) {
             throw new InvalidVehicleTypeException("Vehicle type is required");
@@ -1085,7 +1137,7 @@ private Double parseDoubleStrict(String s) {
         return s == null ? "" : s.trim().toLowerCase();
     }
 
-    // Human-readable formatter for epoch millis using system default zone
+    // Format epoch millis to human timestamp.
     private String formatMillis(long epochMillis) {
         if (epochMillis <= 0L) {
             return "N/A";
@@ -1097,7 +1149,6 @@ private Double parseDoubleStrict(String s) {
         }
     }
 
-    // Helper used for saving text fields
     private String safeForFile(String s) {
         if (s == null) {
             return "";
@@ -1105,7 +1156,6 @@ private Double parseDoubleStrict(String s) {
         return s.replace("|", " ").replace("\n", " ").trim();
     }
 
-    // Pad a column to a minimum width (right-pad with spaces). Does not truncate.
     private String padColumn(String s, int minWidth) {
         if (s == null) {
             s = "";
@@ -1118,9 +1168,7 @@ private Double parseDoubleStrict(String s) {
         return sb.toString();
     }
 
-    // --- new helper flows exposed for programmatic use ---
-
-    // Remove vehicle immediately without billing. Returns the removed Vehicle or null.
+    // Remove vehicle immediately without billing.
     public Vehicle pullOutOnly(String plate) {
         if (plate == null || plate.isEmpty()) {
             return null;
@@ -1128,10 +1176,7 @@ private Double parseDoubleStrict(String s) {
         return parkingLot.removeVehicleByPlate(plate);
     }
 
-    /**
-     * Bill the vehicle then remove it on successful payment.
-     * Returns a printable receipt on success, or an error message on failure.
-     */
+    // Bill the vehicle then remove it on successful payment.
     public String billThenPullOut(String plate, String method, double cashGiven, String cardNumber, String cardHolder) {
         if (plate == null || plate.isEmpty()) {
             return "Invalid plate";
@@ -1150,7 +1195,6 @@ private Double parseDoubleStrict(String s) {
         long entry = slot.getEntryTime();
         long exit = System.currentTimeMillis();
 
-        // Compute fee first and construct payment with the correct amount
         double fee = billingService.computeFee(v, entry, exit);
         Payment payment;
         if ("CASH".equalsIgnoreCase(method)) {
@@ -1199,7 +1243,6 @@ private Double parseDoubleStrict(String s) {
             StringBuilder sb = new StringBuilder();
             sb.append("Plate: ").append(plate);
             sb.append(", Type: ").append(type);
-            // owner removed from records
             if (height > 0.0) {
                 sb.append(", Height: ").append(String.format("%.2fm", height));
             }
