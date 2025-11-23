@@ -819,7 +819,7 @@ private Double parseDoubleStrict(String s) {
                 bw.newLine();
                 // Pipe-delimited line format with minimum column widths
                 for (VehicleRecord r : registry.values()) {
-                    String p0 = padColumn(safeForFile(r.plate), 27);
+                    String p0 = padColumn(safeForFile(r.plate), 25);
                     String p1 = padColumn(safeForFile(r.type), 25);
                     String p2 = padColumn(String.format("%.2f", r.height), 25);
                     String p3 = padColumn(String.valueOf(r.engineCc), 25);
@@ -836,15 +836,16 @@ private Double parseDoubleStrict(String s) {
             // plate | type | height | engineCc | pwd | floor | slotNumber | entryMillis
             Path parkedPath = dataDir.resolve("parked.txt");
             try (BufferedWriter pbw = Files.newBufferedWriter(parkedPath, StandardCharsets.UTF_8)) {
-                // header (commented so loader ignores it). Use wide columns (25 chars) for readability.
-                String hh0 = padColumn("Plate", 26);
-                String hh1 = padColumn("Type", 25);
-                String hh2 = padColumn("Height", 25);
-                String hh3 = padColumn("EngineCc", 25);
-                String hh4 = padColumn("PWD", 25);
-                String hh5 = padColumn("Floor", 25);
-                String hh6 = padColumn("Slot#", 25);
-                String hh7 = padColumn("EntryTime", 25);
+                // header (commented so loader ignores it).
+                // Use the same column widths as the data rows so columns align.
+                String hh0 = padColumn("Plate", 25);
+                String hh1 = padColumn("Type", 27);
+                String hh2 = padColumn("Height", 27);
+                String hh3 = padColumn("EngineCc", 27);
+                String hh4 = padColumn("PWD", 27);
+                String hh5 = padColumn("Floor", 27);
+                String hh6 = padColumn("Slot#", 27);
+                String hh7 = padColumn("EntryTime", 27);
                 pbw.write("# " + hh0 + " | " + hh1 + " | " + hh2 + " | " + hh3 + " | " + hh4 + " | " + hh5 + " | " + hh6 + " | " + hh7);
                 pbw.newLine();
                 Map<Integer, List<ParkingSlot>> snapshot = parkingLot.getFloorsSnapshot();
