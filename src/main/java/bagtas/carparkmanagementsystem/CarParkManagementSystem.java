@@ -935,43 +935,34 @@ private Double parseDoubleStrict(String s) {
         if (Files.exists(parkedPath)) {
             int restored = 0;
             int skip = 0;
-            try (BufferedWriter pbw = Files.newBufferedWriter(parkedPath, StandardCharsets.UTF_8)) {
-                // header (commented so loader ignores it). Use wide columns (35 chars) for readability.
-                String hh0 = padColumn("Plate", 35);
-                String hh1 = padColumn("Type", 35);
-                String hh2 = padColumn("Height", 35);
-                String hh3 = padColumn("EngineCc", 35);
-                String hh4 = padColumn("PWD", 35);
-                String hh5 = padColumn("Floor", 35);
-                String hh6 = padColumn("Slot#", 35);
-                String hh7 = padColumn("EntryTime", 35);
-                pbw.write("# " + hh0 + " | " + hh1 + " | " + hh2 + " | " + hh3 + " | " + hh4 + " | " + hh5 + " | " + hh6 + " | " + hh7);
-                pbw.newLine();
-                Map<Integer, List<ParkingSlot>> snapshot = parkingLot.getFloorsSnapshot();
-                if (snapshot != null) {
-                    for (List<ParkingSlot> slots : snapshot.values()) {
-                        if (slots == null) continue;
-                        for (ParkingSlot slot : slots) {
-                            Vehicle v = slot.getCurrentVehicle();
-                            if (v == null) continue;
-                            String plate = padColumn(safeForFile(v.getPlateNumber()), 35);
-                            String type = padColumn(safeForFile(v.getType()), 35);
-                            String height = padColumn(String.format("%.2f", v.getHeight()), 35);
-                            String engine = "0";
-                            if (v instanceof Motorcycle) engine = String.valueOf(((Motorcycle) v).getEngineCC());
-                            engine = padColumn(engine, 35);
-                            String pwd = padColumn(v.isPwdDriver() ? "1" : "0", 35);
-                            String floor = padColumn(String.valueOf(slot.getFloorNumber()), 35);
-                            String slotno = padColumn(String.valueOf(slot.getSlotNumber()), 35);
-                            String entry = padColumn(formatMillis(slot.getEntryTime()), 35);
-                            String line = plate + " | " + type + " | " + height + " | " + engine + " | " + pwd + " | " + floor + " | " + slotno + " | " + entry;
-                            pbw.write(line);
-                            pbw.newLine();
-                        }
-                    }
-                }
-                pbw.flush();
-            }
+            try (BufferedReader pbr = Files.newBufferedReader(parkedPath, StandardCharsets.UTF_8)) {
+                String pline;
+                while ((pline = pbr.readLine()) != null) {
+                    pline = pline.trim();
+                    if (pline.isEmpty()) continue;
+                    if (pline.startsWith("#")) continue;
+                    if (pline.toLowerCase().startsWith("plate")) continue;
+                    String[] parts;
+                    if (pline.contains("|")) parts = pline.split("\\|", -1);
+                    else if (pline.contains(",")) parts = pline.split(",", -1);
+                    else { skip++; continue; }
+                    if (parts.length < 8) { skip++; continue; }
+                    String plate = parts[0].trim();
+                    String type = parts[1].trim().toLowerCase();
+                    double height = parseDoubleOrDefault(parts[2].trim(), 0.0);
+                    int engineCc = parseIntOrDefault(parts[3].trim(), 0);
+                    boolean pwd = "1".equals(parts[4].trim()) || "true".equalsIgnoreCase(parts[4].trim());
+                    int floor = parseIntOrDefault(parts[5].trim(), 1);
+                    int slotno = parseIntOrDefault(parts[6].trim(), 0);
+                    long entry = 0L;
+                    try { entry = Long.parseLong(parts[7].trim()); } catch (Exception ignored) {}
+
+                    // Build vehicle object similar to parkVehicleFlow
+                    Vehicle v;
+                    if ("ev".equalsIgnoreCase(type)) {
+                        v = new Car(plate, height, pwd) {
+                            @Override public String getType() { return "EV"; }
+                        };
                     } else if ("car".equalsIgnoreCase(type)) {
                         v = new Car(plate, height, pwd);
                     } else {
