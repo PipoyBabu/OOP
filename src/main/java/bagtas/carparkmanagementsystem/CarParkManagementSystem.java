@@ -838,7 +838,7 @@ private Double parseDoubleStrict(String s) {
             Path parkedPath = dataDir.resolve("parked.txt");
             try (BufferedWriter pbw = Files.newBufferedWriter(parkedPath, StandardCharsets.UTF_8)) {
                 // header (commented so loader ignores it)
-                pbw.write("# plate | type | height | engineCc | pwd | floor | slotNumber | entryMillis");
+                pbw.write("# plate        | type        | height        | engineCc        | pwd        | floor        | slotNumber        | entryMillis");
                 pbw.newLine();
                 Map<Integer, List<ParkingSlot>> snapshot = parkingLot.getFloorsSnapshot();
                 if (snapshot != null) {
@@ -856,7 +856,7 @@ private Double parseDoubleStrict(String s) {
                             String floor = String.valueOf(slot.getFloorNumber());
                             String slotno = String.valueOf(slot.getSlotNumber());
                             String entry = String.valueOf(slot.getEntryTime());
-                            String line = plate + " | " + type + " | " + height + " | " + engine + " | " + pwd + " | " + floor + " | " + slotno + " | " + entry;
+                            String line = plate + "        | " + type + "        | " + height + "        | " + engine + "        | " + pwd + "        | " + floor + "        | " + slotno + "        | " + entry;
                             pbw.write(line);
                             pbw.newLine();
                         }
