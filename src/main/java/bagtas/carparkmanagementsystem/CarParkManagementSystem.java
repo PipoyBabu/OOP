@@ -1005,7 +1005,7 @@ private Double parseDoubleStrict(String s) {
             }
         } catch (IOException ignored) {}
 
-        Path out = exportsDir.resolve("parked.txt");
+        Path out = exportsDir.resolve("vehicles_in_lot.txt");
         int written = 0;
         try (BufferedWriter bw = Files.newBufferedWriter(out, StandardCharsets.UTF_8)) {
             // Header with aligned columns (plate/type min 8, entry min 20)
