@@ -443,7 +443,7 @@ private Double parseDoubleStrict(String s) {
                 case "3":
                     searchVehicleByPlate();
                     break;
-                case "3":
+                case "4":
                     break;
                 default:
                     System.out.println("Invalid selection — press Enter to continue.");
