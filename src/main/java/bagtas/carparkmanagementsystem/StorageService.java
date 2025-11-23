@@ -45,7 +45,7 @@ public class StorageService {
         // create a sibling directory with the same base name (e.g., data/transactions.txt -> data/transactions/)
         if (outPath.getFileName().toString().toLowerCase().endsWith(".txt")) {
             String base = outPath.getFileName().toString();
-            base = base.replaceFirst("\\\.txt$", "");
+            base = base.replaceFirst("\\.txt$", "");
             if (parent != null) {
                 receiptsDir = parent.resolve(base);
             } else {
