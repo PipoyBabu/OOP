@@ -856,7 +856,7 @@ private Double parseDoubleStrict(String s) {
                             String floor = String.valueOf(slot.getFloorNumber());
                             String slotno = String.valueOf(slot.getSlotNumber());
                             String entry = String.valueOf(slot.getEntryTime());
-                            String line = plate + "         | " + type + "         | " + height + "         | " + engine + "         | " + pwd + "         | " + floor + "         | " + slotno + "         | " + entry;
+                            String line = plate + "          | " + type + "           | " + height + "           | " + engine + "          | " + pwd + "          | " + floor + "          | " + slotno + "          | " + entry;
                             pbw.write(line);
                             pbw.newLine();
                         }
