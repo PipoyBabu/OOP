@@ -854,16 +854,16 @@ private Double parseDoubleStrict(String s) {
                         for (ParkingSlot slot : slots) {
                             Vehicle v = slot.getCurrentVehicle();
                             if (v == null) continue;
-                            String plate = padColumn(safeForFile(v.getPlateNumber()), 35);
-                            String type = padColumn(safeForFile(v.getType()), 35);
-                            String height = padColumn(String.format("%.2f", v.getHeight()), 35);
+                            String plate = padColumn(safeForFile(v.getPlateNumber()), 25);
+                            String type = padColumn(safeForFile(v.getType()), 25);
+                            String height = padColumn(String.format("%.2f", v.getHeight()), 25);
                             String engine = "0";
                             if (v instanceof Motorcycle) engine = String.valueOf(((Motorcycle) v).getEngineCC());
-                            engine = padColumn(engine, 35);
-                            String pwd = padColumn(v.isPwdDriver() ? "1" : "0", 35);
-                            String floor = padColumn(String.valueOf(slot.getFloorNumber()), 35);
-                            String slotno = padColumn(String.valueOf(slot.getSlotNumber()), 35);
-                            String entry = padColumn(formatMillis(slot.getEntryTime()), 35);
+                            engine = padColumn(engine, 25);
+                            String pwd = padColumn(v.isPwdDriver() ? "1" : "0", 25);
+                            String floor = padColumn(String.valueOf(slot.getFloorNumber()), 25);
+                            String slotno = padColumn(String.valueOf(slot.getSlotNumber()), 25);
+                            String entry = padColumn(formatMillis(slot.getEntryTime()), 25);
                             String line = plate + " | " + type + " | " + height + " | " + engine + " | " + pwd + " | " + floor + " | " + slotno + " | " + entry;
                             pbw.write(line);
                             pbw.newLine();
