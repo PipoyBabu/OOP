@@ -810,12 +810,13 @@ private Double parseDoubleStrict(String s) {
             Path vehiclesPath = dataDir.resolve("vehicles.txt");
             try (BufferedWriter bw = Files.newBufferedWriter(vehiclesPath, StandardCharsets.UTF_8)) {
                 // Write documented header (pipe-delimited) per user preference - aligned columns
+                // Prefix header with '#' so the loader can skip it safely.
                 String h0 = padColumn("Plate", 8);
                 String h1 = padColumn("Type", 8);
                 String h2 = padColumn("Height", 8);
                 String h3 = padColumn("EngineCc", 8);
                 String h4 = padColumn("PWD", 8);
-                bw.write(h0 + " | " + h1 + " | " + h2 + " | " + h3 + " | " + h4);
+                bw.write("# " + h0 + " | " + h1 + " | " + h2 + " | " + h3 + " | " + h4);
                 bw.newLine();
                 // Pipe-delimited line format with minimum column widths
                 for (VehicleRecord r : registry.values()) {
@@ -836,8 +837,8 @@ private Double parseDoubleStrict(String s) {
             // plate | type | height | engineCc | pwd | floor | slotNumber | entryMillis
             Path parkedPath = dataDir.resolve("parked.txt");
             try (BufferedWriter pbw = Files.newBufferedWriter(parkedPath, StandardCharsets.UTF_8)) {
-                // header
-                pbw.write("plate | type | height | engineCc | pwd | floor | slotNumber | entryMillis");
+                // header (commented so loader ignores it)
+                pbw.write("# plate | type | height | engineCc | pwd | floor | slotNumber | entryMillis");
                 pbw.newLine();
                 Map<Integer, List<ParkingSlot>> snapshot = parkingLot.getFloorsSnapshot();
                 if (snapshot != null) {
