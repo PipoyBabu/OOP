@@ -837,7 +837,7 @@ private Double parseDoubleStrict(String s) {
             Path parkedPath = dataDir.resolve("parked.txt");
             try (BufferedWriter pbw = Files.newBufferedWriter(parkedPath, StandardCharsets.UTF_8)) {
                 // header (commented so loader ignores it). Use wide columns (25 chars) for readability.
-                String hh0 = padColumn("Plate", 25);
+                String hh0 = padColumn("Plate", 26);
                 String hh1 = padColumn("Type", 25);
                 String hh2 = padColumn("Height", 25);
                 String hh3 = padColumn("EngineCc", 25);
@@ -854,7 +854,7 @@ private Double parseDoubleStrict(String s) {
                         for (ParkingSlot slot : slots) {
                             Vehicle v = slot.getCurrentVehicle();
                             if (v == null) continue;
-                            String plate = padColumn(safeForFile(v.getPlateNumber()), 25);
+                            String plate = padColumn(safeForFile(v.getPlateNumber()), 26);
                             String type = padColumn(safeForFile(v.getType()), 27);
                             String height = padColumn(String.format("%.2f", v.getHeight()), 27);
                             String engine = "0";
