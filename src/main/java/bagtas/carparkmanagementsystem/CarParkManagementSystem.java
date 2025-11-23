@@ -135,7 +135,7 @@ private void registerVehicle() {
         return;
     }
 
-    System.out.print("Vehicle type (car/motorcycle/scooter/ev) [default: car]: ");
+    System.out.print("Vehicle type (car/motorcycle/ev) [default: car]: ");
     String type = scanner.nextLine().trim().toLowerCase();
     if (type.isEmpty()) {
         type = "car";
@@ -149,44 +149,43 @@ private void registerVehicle() {
         pause();
         return;
     }
+    // Normalize scooter to motorcycle: scooters are modeled as motorcycles with small engine CC
+    boolean normalizedFromScooter = false;
+    if ("scooter".equals(type)) {
+        type = "motorcycle";
+        normalizedFromScooter = true;
+        System.out.println("Note: 'scooter' normalized to 'motorcycle' — engine CC will determine slot.");
+    }
 
-        // Height is now REQUIRED
-        double height = 0.0;
-        while (true) {
-            System.out.print("Height in meters (required): ");
-            String h = scanner.nextLine().trim();
-
-            if (h.isEmpty()) {
-                System.err.println("Height is required. Please enter a value in meters (e.g., 1.65). ");
-                continue;
-            }
-
-            Double parsed = parseDoubleStrict(h);
-            if (parsed == null) {
-                System.err.println("Invalid height format. Please enter a numeric value (e.g., 1.65). ");
-                continue;
-            }
-
-            if (parsed <= 0.0) {
-                System.err.println("Height must be greater than 0.");
-                continue;
-            }
-
-            if (parsed > ParkingLot.DEFAULT_CLEARANCE_M) {
-                System.err.println("Height " + parsed + "m exceeds maximum allowed clearance of "
-                        + ParkingLot.DEFAULT_CLEARANCE_M + "m");
-                continue;
-            }
-
-            height = parsed;
-            break;
+    // Height is required; parse once and throw domain exception on invalid input so
+    // the custom exception handling can apply instead of looping here.
+    double height = 0.0;
+    System.out.print("Height in meters (required): ");
+    String h = scanner.nextLine().trim();
+    Double parsed = parseDoubleStrict(h);
+    try {
+        if (h.isEmpty() || parsed == null) {
+            throw new InvalidVehicleHeightException("Invalid or missing height: please provide numeric height in meters");
         }
+        if (parsed <= 0.0) {
+            throw new InvalidVehicleHeightException("Height must be greater than 0");
+        }
+        if (parsed > ParkingLot.DEFAULT_CLEARANCE_M) {
+            throw new InvalidVehicleHeightException("Height " + parsed + "m exceeds maximum allowed clearance of " + ParkingLot.DEFAULT_CLEARANCE_M + "m");
+        }
+        height = parsed;
+    } catch (InvalidVehicleHeightException ivhe) {
+        System.err.println(ivhe.getMessage());
+        pause();
+        return;
+    }
 
     int engineCc = 0;
-    if ("motorcycle".equals(type) || "scooter".equals(type)) {
+    if ("motorcycle".equals(type)) {
         System.out.print("Engine CC (press Enter for default 150): ");
         String cc = scanner.nextLine().trim();
         engineCc = parseIntOrDefault(cc, 150);
+        if (normalizedFromScooter && engineCc <= 0) engineCc = 150;
     }
 
     boolean isPwd = false;
@@ -856,7 +855,7 @@ private Double parseDoubleStrict(String s) {
                             String floor = String.valueOf(slot.getFloorNumber());
                             String slotno = String.valueOf(slot.getSlotNumber());
                             String entry = String.valueOf(slot.getEntryTime());
-                            String line = plate + "         | " + type + "           | " + height + "           | " + engine + "          | " + pwd + "          | " + floor + "          | " + slotno + "          | " + entry;
+                            String line = plate + "         | " + type + "         | " + height + "           | " + engine + "          | " + pwd + "          | " + floor + "          | " + slotno + "          | " + entry;
                             pbw.write(line);
                             pbw.newLine();
                         }
