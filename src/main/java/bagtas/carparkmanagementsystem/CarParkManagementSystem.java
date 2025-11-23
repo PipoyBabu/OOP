@@ -356,18 +356,14 @@ private Double parseDoubleStrict(String s) {
     long entry = slot.getEntryTime();
     long exit = System.currentTimeMillis();
 
-    // Remove vehicle first (operator requested pull-out), then process payment via paymentFlow
+    // Process payment first; only remove vehicle after successful payment so
+    // we don't lose parked vehicles if payment fails.
     try {
-        Vehicle removed = parkingLot.removeVehicleByPlate(plate);
-        if (removed == null) {
-            System.err.println("Failed to remove vehicle from parking lot.");
+        boolean ok = paymentFlow(v, plate, entry, exit);
+        if (ok) {
+            System.out.println("Vehicle successfully pulled out and billed.");
         } else {
-            boolean ok = paymentFlow(v, plate, entry, exit);
-            if (ok) {
-                System.out.println("Vehicle successfully pulled out and billed.");
-            } else {
-                System.out.println("Pull-out completed but payment was not recorded.");
-            }
+            System.out.println("Payment not recorded. Vehicle remains parked.");
         }
     } catch (InvalidPaymentException ipe) {
         System.err.println("Payment error: " + ipe.getMessage());
@@ -424,8 +420,20 @@ private Double parseDoubleStrict(String s) {
             return false;
         }
 
-        // Persist (vehicle already removed by caller)
-        tryPersistTransaction(out[0]);
+        // Persist transaction
+        if (!tryPersistTransaction(out[0])) {
+            System.err.println("Warning: transaction could not be persisted.");
+        }
+
+        // Attempt to remove the vehicle now that payment succeeded. If the
+        // caller already removed the vehicle, that's fine; otherwise remove it.
+        ParkingSlot current = parkingLot.findSlotByPlate(plate);
+        if (current != null) {
+            Vehicle removed = parkingLot.removeVehicleByPlate(plate);
+            if (removed == null) {
+                System.err.println("Warning: could not remove vehicle after successful payment.");
+            }
+        }
 
         String receipt = ReceiptPrinter.renderReceipt(out[0], v, pr);
         System.out.println("\n--- RECEIPT ---");
@@ -730,16 +738,11 @@ private Double parseDoubleStrict(String s) {
         long exit = System.currentTimeMillis();
 
         try {
-            Vehicle removed = parkingLot.removeVehicleByPlate(plate);
-            if (removed == null) {
-                System.err.println("Failed to remove vehicle from parking lot.");
+            boolean ok = paymentFlow(v, plate, entry, exit);
+            if (ok) {
+                System.out.println("Payment processed and vehicle pulled out.");
             } else {
-                boolean ok = paymentFlow(v, plate, entry, exit);
-                if (ok) {
-                    System.out.println("Payment processed and vehicle pulled out.");
-                } else {
-                    System.out.println("Pull-out completed but payment was not recorded.");
-                }
+                System.out.println("Payment not recorded. Vehicle remains parked.");
             }
         } catch (InvalidPaymentException ipe) {
             System.err.println("Payment error: " + ipe.getMessage());
