@@ -994,7 +994,7 @@ private Double parseDoubleStrict(String s) {
         pause();
     }
 
-    // Export currently parked vehicles to exports/parked.txt in simple text format (plate, type, entry human time)
+    // Export currently parked vehicles to exports/vehicles_in_lot.txt in simple text format (plate, type, entry human time)
     private void exportParkedFlow() {
         System.out.println();
         System.out.println("EXPORT FILE (currently parked vehicles)");
@@ -1008,9 +1008,9 @@ private Double parseDoubleStrict(String s) {
         Path out = exportsDir.resolve("vehicles_in_lot.txt");
         int written = 0;
         try (BufferedWriter bw = Files.newBufferedWriter(out, StandardCharsets.UTF_8)) {
-            // Header with aligned columns (plate/type min 8, entry min 20)
+            // Header with aligned columns (plate min 8, type min 26,  entry min 20)
             String hh0 = padColumn("Plate", 8);
-            String hh1 = padColumn("Type", 8);
+            String hh1 = padColumn("Type", 26);
             String hh2 = padColumn("EntryTime", 20);
             bw.write(hh0 + " | " + hh1 + " | " + hh2);
             bw.newLine();
@@ -1026,7 +1026,7 @@ private Double parseDoubleStrict(String s) {
                             continue;
                         }
                         String plate = padColumn(v.getPlateNumber(), 8);
-                        String type = padColumn(v.getType(), 8);
+                        String type = padColumn(v.getType(), 26);
                         String entry = padColumn(formatMillis(slot.getEntryTime()), 20);
                         String line = plate + " | " + type + " | " + entry;
                         bw.write(line);
