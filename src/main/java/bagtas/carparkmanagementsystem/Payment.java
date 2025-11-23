@@ -17,11 +17,11 @@ public abstract class Payment extends BasePayment {
     private final String cardPin;        // optional PIN for card
 
     public Payment(double amount) {
-        this(amount, 0.0, null, null);
+        this(amount, 0.0, null, null, null);
     }
 
     public Payment(double amount, double cashGiven) {
-        this(amount, cashGiven, null, null);
+        this(amount, cashGiven, null, null, null);
     }
 
     public Payment(double amount, String cardNumber, String cardHolder) {
