@@ -836,9 +836,8 @@ private Double parseDoubleStrict(String s) {
             // plate | type | height | engineCc | pwd | floor | slotNumber | entryMillis
             Path parkedPath = dataDir.resolve("parked.txt");
             try (BufferedWriter pbw = Files.newBufferedWriter(parkedPath, StandardCharsets.UTF_8)) {
-                // header (commented so loader ignores it).
-                // Use the same column widths as the data rows so columns align.
-                String hh0 = padColumn("Plate", 25);
+                
+                String hh0 = padColumn("Plate", 24);
                 String hh1 = padColumn("Type", 27);
                 String hh2 = padColumn("Height", 27);
                 String hh3 = padColumn("EngineCc", 27);
