@@ -810,7 +810,7 @@ private Double parseDoubleStrict(String s) {
             try (BufferedWriter bw = Files.newBufferedWriter(vehiclesPath, StandardCharsets.UTF_8)) {
                 // Write documented header (pipe-delimited) per user preference - aligned columns
                 // Prefix header with '#' so the loader can skip it safely.
-                String h0 = padColumn("Plate", 27);
+                String h0 = padColumn("Plate", 25);
                 String h1 = padColumn("Type", 27);
                 String h2 = padColumn("Height", 27);
                 String h3 = padColumn("EngineCc", 27);
@@ -838,7 +838,7 @@ private Double parseDoubleStrict(String s) {
             try (BufferedWriter pbw = Files.newBufferedWriter(parkedPath, StandardCharsets.UTF_8)) {
                 // header (commented so loader ignores it).
                 // Use the same column widths as the data rows so columns align.
-                String hh0 = padColumn("Plate", 26);
+                String hh0 = padColumn("Plate", 25);
                 String hh1 = padColumn("Type", 27);
                 String hh2 = padColumn("Height", 27);
                 String hh3 = padColumn("EngineCc", 27);
