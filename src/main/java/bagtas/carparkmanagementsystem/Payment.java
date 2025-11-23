@@ -14,6 +14,7 @@ public abstract class Payment extends BasePayment {
     private final double cashGiven;      // for cash
     private final String cardNumber;     // for card
     private final String cardHolder;     // for card
+    private final String cardPin;        // optional PIN for card
 
     public Payment(double amount) {
         this(amount, 0.0, null, null);
@@ -24,20 +25,27 @@ public abstract class Payment extends BasePayment {
     }
 
     public Payment(double amount, String cardNumber, String cardHolder) {
-        this(amount, 0.0, cardNumber, cardHolder);
+        this(amount, 0.0, cardNumber, cardHolder, null);
     }
 
-    private Payment(double amount, double cashGiven, String cardNumber, String cardHolder) {
+    // Optional constructor that accepts a card PIN (e.g., 6-digit PIN)
+    public Payment(double amount, String cardNumber, String cardHolder, String cardPin) {
+        this(amount, 0.0, cardNumber, cardHolder, cardPin);
+    }
+
+    private Payment(double amount, double cashGiven, String cardNumber, String cardHolder, String cardPin) {
         this.amount = amount;
         this.cashGiven = cashGiven;
         this.cardNumber = cardNumber;
         this.cardHolder = cardHolder;
+        this.cardPin = cardPin;
     }
 
     public double getAmount() { return amount; }
     public double getCashGiven() { return cashGiven; }
     public String getCardNumber() { return cardNumber; }
     public String getCardHolder() { return cardHolder; }
+    public String getCardPin() { return cardPin; }
 
 
     public abstract PaymentResult process();

@@ -108,13 +108,12 @@ public class CarParkManagementSystem {
                     deleteVehicle();
                     break;
                 case "3":
-                    break;
+                    return;
                 default:
                     System.out.println("Invalid selection — press Enter to continue.");
                     scanner.nextLine();
                     break;
             }
-            break;
         }
     }
 
@@ -151,32 +150,37 @@ private void registerVehicle() {
         return;
     }
 
-    //  Height is now REQUIRED 
-    double height = 0.0;
-    
-        System.out.print("Height in meters (required): ");
-        String h = scanner.nextLine().trim();
+        // Height is now REQUIRED
+        double height = 0.0;
+        while (true) {
+            System.out.print("Height in meters (required): ");
+            String h = scanner.nextLine().trim();
 
-        if (h.isEmpty()) {
-            System.err.println("Height is required. Please enter a value in meters (e.g., 1.65).");
+            if (h.isEmpty()) {
+                System.err.println("Height is required. Please enter a value in meters (e.g., 1.65). ");
+                continue;
+            }
+
+            Double parsed = parseDoubleStrict(h);
+            if (parsed == null) {
+                System.err.println("Invalid height format. Please enter a numeric value (e.g., 1.65). ");
+                continue;
+            }
+
+            if (parsed <= 0.0) {
+                System.err.println("Height must be greater than 0.");
+                continue;
+            }
+
+            if (parsed > ParkingLot.DEFAULT_CLEARANCE_M) {
+                System.err.println("Height " + parsed + "m exceeds maximum allowed clearance of "
+                        + ParkingLot.DEFAULT_CLEARANCE_M + "m");
+                continue;
+            }
+
+            height = parsed;
+            break;
         }
-
-        Double parsed = parseDoubleStrict(h);
-        if (parsed == null) {
-            System.err.println("Invalid height format. Please enter a numeric value (e.g., 1.65).");
-        }
-
-        if (parsed <= 0.0) {
-            System.err.println("Height must be greater than 0.");
-        }
-
-        if (parsed > ParkingLot.DEFAULT_CLEARANCE_M) {
-            System.err.println("Height " + parsed + "m exceeds maximum allowed clearance of "
-                    + ParkingLot.DEFAULT_CLEARANCE_M + "m");
-        }
-
-        height = parsed;
-    
 
     int engineCc = 0;
     if ("motorcycle".equals(type) || "scooter".equals(type)) {
@@ -243,13 +247,12 @@ private Double parseDoubleStrict(String s) {
                     pullOutVehicleFlow();
                     break;
                 case "3":
-                    break;
+                    return;
                 default:
                     System.out.println("Invalid selection — press Enter to continue.");
                     scanner.nextLine();
                     break;
             }
-            break;
         }
     }
 
@@ -399,7 +402,17 @@ private Double parseDoubleStrict(String s) {
             String cn = scanner.nextLine().trim();
             System.out.print("Enter card holder: ");
             String ch = scanner.nextLine().trim();
-            payment = new CardPayment(fee, cn, ch);
+            // Request 6-digit PIN (Philippine common practice)
+            String pin = null;
+            while (true) {
+                System.out.print("Enter 6-digit PIN: ");
+                pin = scanner.nextLine().trim();
+                if (pin.matches("\\d{6}")) {
+                    break;
+                }
+                System.out.println("PIN must be exactly 6 digits. Please try again.");
+            }
+            payment = new CardPayment(fee, cn, ch, pin);
         } else {
             throw new InvalidPaymentException("Unsupported payment method: " + pm);
         }
@@ -444,13 +457,12 @@ private Double parseDoubleStrict(String s) {
                     searchVehicleByPlate();
                     break;
                 case "4":
-                    break;
+                    return;
                 default:
                     System.out.println("Invalid selection — press Enter to continue.");
                     scanner.nextLine();
                     break;
             }
-            break;
         }
     }
 
@@ -615,13 +627,12 @@ private Double parseDoubleStrict(String s) {
                     paymentFlow();
                     break;
                 case "4":
-                    break;
+                    return;
                 default:
                     System.out.println("Invalid selection - press Enter to continue.");
                     scanner.nextLine();
                     break;
             }
-            break;
         }
     }
 
@@ -773,13 +784,12 @@ private Double parseDoubleStrict(String s) {
                     exportParkedFlow();
                     break;
                 case "4":
-                    break;
+                    return;
                 default:
                     System.out.println("Invalid selection — press Enter to continue.");
                     scanner.nextLine();
                     break;
             }
-            break;
         }
     }
 
