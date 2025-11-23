@@ -811,20 +811,20 @@ private Double parseDoubleStrict(String s) {
             try (BufferedWriter bw = Files.newBufferedWriter(vehiclesPath, StandardCharsets.UTF_8)) {
                 // Write documented header (pipe-delimited) per user preference - aligned columns
                 // Prefix header with '#' so the loader can skip it safely.
-                String h0 = padColumn("Plate", 8);
-                String h1 = padColumn("Type", 8);
-                String h2 = padColumn("Height", 8);
-                String h3 = padColumn("EngineCc", 8);
-                String h4 = padColumn("PWD", 8);
+                String h0 = padColumn("Plate", 15);
+                String h1 = padColumn("Type", 15);
+                String h2 = padColumn("Height", 15);
+                String h3 = padColumn("EngineCc", 15);
+                String h4 = padColumn("PWD", 15);
                 bw.write("# " + h0 + " | " + h1 + " | " + h2 + " | " + h3 + " | " + h4);
                 bw.newLine();
                 // Pipe-delimited line format with minimum column widths
                 for (VehicleRecord r : registry.values()) {
-                    String p0 = padColumn(safeForFile(r.plate), 8);
-                    String p1 = padColumn(safeForFile(r.type), 8);
-                    String p2 = padColumn(String.format("%.2f", r.height), 8);
-                    String p3 = padColumn(String.valueOf(r.engineCc), 8);
-                    String p4 = padColumn(r.pwd ? "1" : "0", 8);
+                    String p0 = padColumn(safeForFile(r.plate), 15);
+                    String p1 = padColumn(safeForFile(r.type), 15);
+                    String p2 = padColumn(String.format("%.2f", r.height), 15);
+                    String p3 = padColumn(String.valueOf(r.engineCc), 15);
+                    String p4 = padColumn(r.pwd ? "1" : "0", 15);
                     String line = p0 + " | " + p1 + " | " + p2 + " | " + p3 + " | " + p4;
                     bw.write(line);
                     bw.newLine();
