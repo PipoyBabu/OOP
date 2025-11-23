@@ -420,8 +420,10 @@ private Double parseDoubleStrict(String s) {
             return false;
         }
 
-        // Persist transaction
-        if (!tryPersistTransaction(out[0])) {
+        // Render receipt first (caller-provided rendering) then persist the
+        // receipt file. This ensures the stored file matches the printed receipt.
+        String receipt = ReceiptPrinter.renderReceipt(out[0], v, pr);
+        if (!tryPersistTransaction(out[0], receipt)) {
             System.err.println("Warning: transaction could not be persisted.");
         }
 
@@ -435,7 +437,6 @@ private Double parseDoubleStrict(String s) {
             }
         }
 
-        String receipt = ReceiptPrinter.renderReceipt(out[0], v, pr);
         System.out.println("\n--- RECEIPT ---");
         System.out.println(receipt);
         System.out.println("Entry: " + formatMillis(entry));
@@ -750,17 +751,17 @@ private Double parseDoubleStrict(String s) {
         pause();
     }
 
-    // Attempt to persist a transaction via storageService; returns true on success
-    private boolean tryPersistTransaction(Transaction tx) {
+    // Attempt to persist a transaction and its rendered receipt via storageService; returns true on success
+    private boolean tryPersistTransaction(Transaction tx, String renderedReceipt) {
         if (tx == null) {
             return false;
         }
         try {
-            storageService.appendTransaction(tx);
-            System.out.println("Transaction persisted to " + storageService.getPath());
+            storageService.appendReceipt(tx, renderedReceipt);
+            System.out.println("Receipt persisted to " + storageService.getPath());
             return true;
         } catch (StorageException se) {
-            System.err.println("Failed to persist transaction: " + se.getMessage());
+            System.err.println("Failed to persist receipt: " + se.getMessage());
             return false;
         }
     }

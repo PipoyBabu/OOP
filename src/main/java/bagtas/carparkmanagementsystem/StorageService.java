@@ -31,6 +31,7 @@ import java.time.format.DateTimeFormatter;
  */
 public class StorageService {
     private final Path outPath;
+    private final Path receiptsDir;
 
     // Human-friendly timestamp formatter (system default zone)
     private static final DateTimeFormatter HUMAN_TS_FMT =
@@ -40,6 +41,19 @@ public class StorageService {
         if (path == null || path.isEmpty()) throw new IllegalArgumentException("path required");
         this.outPath = Paths.get(path);
         Path parent = outPath.getParent();
+        // Determine receipts directory. If the configured path looks like a file (ends with .txt),
+        // create a sibling directory with the same base name (e.g., data/transactions.txt -> data/transactions/)
+        if (outPath.getFileName().toString().toLowerCase().endsWith(".txt")) {
+            String base = outPath.getFileName().toString();
+            base = base.replaceFirst("\\\.txt$", "");
+            if (parent != null) {
+                receiptsDir = parent.resolve(base);
+            } else {
+                receiptsDir = Paths.get(base);
+            }
+        } else {
+            receiptsDir = outPath;
+        }
         if (parent != null) {
             try {
                 if (!Files.exists(parent)) Files.createDirectories(parent);
@@ -47,6 +61,10 @@ public class StorageService {
                 // best-effort: continue and let appendTransaction fail later if needed
             }
         }
+        // Ensure receipts directory exists (best-effort)
+        try {
+            if (!Files.exists(receiptsDir)) Files.createDirectories(receiptsDir);
+        } catch (IOException ignored) {}
     }
 
     /**
@@ -74,10 +92,46 @@ public class StorageService {
     }
 
     /**
+     * Append a human-readable receipt file for the given transaction. The receipt
+     * content should be provided by the caller (rendered via ReceiptPrinter).
+     */
+    public void appendReceipt(Transaction tx, String receipt) throws StorageException {
+        if (tx == null) throw new IllegalArgumentException("tx required");
+        if (receipt == null) receipt = "";
+
+        // Ensure receiptsDir exists
+        try {
+            if (!Files.exists(receiptsDir)) Files.createDirectories(receiptsDir);
+        } catch (IOException ioe) {
+            throw new StorageException("Failed to create receipts directory " + receiptsDir.toString(), ioe);
+        }
+
+        String fileName = String.format("%d_%s.txt", System.currentTimeMillis(), tx.getId());
+        Path out = receiptsDir.resolve(fileName);
+        try (BufferedWriter bw = Files.newBufferedWriter(out, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW)) {
+            bw.write("Transaction ID: " + tx.getId()); bw.newLine();
+            bw.write("Plate         : " + tx.getPlate()); bw.newLine();
+            bw.write("Vehicle Type  : " + tx.getVehicleType()); bw.newLine();
+            bw.write("Entry         : " + epochToHuman(tx.getEntryTime())); bw.newLine();
+            bw.write("Exit          : " + epochToHuman(tx.getExitTime())); bw.newLine();
+            bw.write("Fee           : " + String.format("%.2f", tx.getFee())); bw.newLine();
+            bw.write("Payment Method: " + tx.getModeOfPayment()); bw.newLine();
+            bw.write("Payment Ref   : " + tx.getNotes()); bw.newLine();
+            bw.newLine();
+            bw.write("--- RECEIPT ---"); bw.newLine();
+            bw.write(receipt); bw.newLine();
+            bw.flush();
+        } catch (IOException ioe) {
+            throw new StorageException("Failed to write receipt to " + out.toString(), ioe);
+        }
+    }
+
+    /**
      * Return configured path (useful for user messages).
      */
     public String getPath() {
-        return outPath.toString();
+        // Return configured receipts directory for user messages (where receipts are stored)
+        return receiptsDir.toString();
     }
 
     // Build a tolerant, human-friendly line using reflection fallbacks for common getters.
