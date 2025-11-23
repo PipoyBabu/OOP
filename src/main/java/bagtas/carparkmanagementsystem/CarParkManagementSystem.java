@@ -831,6 +831,39 @@ private Double parseDoubleStrict(String s) {
                 bw.flush();
             }
 
+            // Also persist currently parked vehicles to data/parked.txt so parked state
+            // can be restored on next startup. Columns:
+            // plate | type | height | engineCc | pwd | floor | slotNumber | entryMillis
+            Path parkedPath = dataDir.resolve("parked.txt");
+            try (BufferedWriter pbw = Files.newBufferedWriter(parkedPath, StandardCharsets.UTF_8)) {
+                // header
+                pbw.write("plate | type | height | engineCc | pwd | floor | slotNumber | entryMillis");
+                pbw.newLine();
+                Map<Integer, List<ParkingSlot>> snapshot = parkingLot.getFloorsSnapshot();
+                if (snapshot != null) {
+                    for (List<ParkingSlot> slots : snapshot.values()) {
+                        if (slots == null) continue;
+                        for (ParkingSlot slot : slots) {
+                            Vehicle v = slot.getCurrentVehicle();
+                            if (v == null) continue;
+                            String plate = safeForFile(v.getPlateNumber());
+                            String type = safeForFile(v.getType());
+                            String height = String.format("%.2f", v.getHeight());
+                            String engine = "0";
+                            if (v instanceof Motorcycle) engine = String.valueOf(((Motorcycle) v).getEngineCC());
+                            String pwd = v.isPwdDriver() ? "1" : "0";
+                            String floor = String.valueOf(slot.getFloorNumber());
+                            String slotno = String.valueOf(slot.getSlotNumber());
+                            String entry = String.valueOf(slot.getEntryTime());
+                            String line = plate + " | " + type + " | " + height + " | " + engine + " | " + pwd + " | " + floor + " | " + slotno + " | " + entry;
+                            pbw.write(line);
+                            pbw.newLine();
+                        }
+                    }
+                }
+                pbw.flush();
+            }
+
             System.out.println("Saved vehicles to " + vehiclesPath.toString());
         } catch (IOException ioe) {
             System.out.println("Failed to save state: " + ioe.getMessage());
@@ -895,6 +928,59 @@ private Double parseDoubleStrict(String s) {
             }
         } catch (IOException ioe) {
             System.out.println("Failed to load state: " + ioe.getMessage());
+        }
+
+        // Attempt to load parked vehicles state (if present) and restore into ParkingLot
+        Path parkedPath = Paths.get("data", "parked.txt");
+        if (Files.exists(parkedPath)) {
+            int restored = 0;
+            int skip = 0;
+            try (BufferedReader pbr = Files.newBufferedReader(parkedPath, StandardCharsets.UTF_8)) {
+                String pline;
+                while ((pline = pbr.readLine()) != null) {
+                    pline = pline.trim();
+                    if (pline.isEmpty()) continue;
+                    if (pline.startsWith("#")) continue;
+                    if (pline.toLowerCase().startsWith("plate")) continue;
+                    String[] parts;
+                    if (pline.contains("|")) parts = pline.split("\\|", -1);
+                    else if (pline.contains(",")) parts = pline.split(",", -1);
+                    else { skip++; continue; }
+                    if (parts.length < 8) { skip++; continue; }
+                    String plate = parts[0].trim();
+                    String type = parts[1].trim().toLowerCase();
+                    double height = parseDoubleOrDefault(parts[2].trim(), 0.0);
+                    int engineCc = parseIntOrDefault(parts[3].trim(), 0);
+                    boolean pwd = "1".equals(parts[4].trim()) || "true".equalsIgnoreCase(parts[4].trim());
+                    int floor = parseIntOrDefault(parts[5].trim(), 1);
+                    int slotno = parseIntOrDefault(parts[6].trim(), 0);
+                    long entry = 0L;
+                    try { entry = Long.parseLong(parts[7].trim()); } catch (Exception ignored) {}
+
+                    // Build vehicle object similar to parkVehicleFlow
+                    Vehicle v;
+                    if ("ev".equalsIgnoreCase(type)) {
+                        v = new Car(plate, height, pwd) {
+                            @Override public String getType() { return "EV"; }
+                        };
+                    } else if ("car".equalsIgnoreCase(type)) {
+                        v = new Car(plate, height, pwd);
+                    } else {
+                        Motorcycle m = new Motorcycle(plate, height > 0.0 ? height : 1.1, engineCc > 0 ? engineCc : 150);
+                        m.setPwdDriver(pwd);
+                        v = m;
+                    }
+
+                    boolean ok = parkingLot.restoreParkedVehicle(floor, slotno, v, entry);
+                    if (ok) restored++; else skip++;
+                }
+                System.out.println("Restored " + restored + " parked vehicle(s) from " + parkedPath.toString());
+                if (skip > 0) System.out.println("Skipped " + skip + " parked lines due to errors.");
+            } catch (IOException ioe) {
+                System.out.println("Failed to load parked state: " + ioe.getMessage());
+            }
+        } else {
+            System.out.println("No parked state file found at data/parked.txt (skipping)");
         }
         pause();
     }

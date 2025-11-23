@@ -62,6 +62,18 @@ public abstract class ParkingSlot {
         return removed;
     }
 
+    // Restore a parked vehicle into this slot with a provided entry time.
+    // Intended for system restore/load operations. Returns true on success.
+    public synchronized boolean restoreVehicle(Vehicle v, long entryTimeMillis) {
+        if (v == null) return false;
+        if (this.occupied) return false;
+        if (!canFit(v)) return false;
+        this.currentVehicle = v;
+        this.occupied = true;
+        this.entryTime = entryTimeMillis <= 0L ? System.currentTimeMillis() : entryTimeMillis;
+        return true;
+    }
+
     // --- Abstract methods ---
     public abstract String getSlotType();
     public abstract boolean canFit(Vehicle v);

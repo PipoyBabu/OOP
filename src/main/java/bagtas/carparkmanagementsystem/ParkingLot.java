@@ -263,6 +263,28 @@ public class ParkingLot {
     plateToSlot.put(v.getPlateNumber(), slot);
 }
 
+    /**
+     * Restore a parked vehicle into a specific floor and slot number with a provided entry time.
+     * This method is intended for loading persisted parked-state on startup.
+     * Returns true on success.
+     */
+    public boolean restoreParkedVehicle(int floorNumber, int slotNumber, Vehicle v, long entryTimeMillis) {
+        if (v == null) throw new IllegalArgumentException("vehicle null");
+        if (floorNumber < 1 || floorNumber > MAX_FLOORS) return false;
+        List<ParkingSlot> slots = floors.get(floorNumber);
+        if (slots == null) return false;
+        for (ParkingSlot s : slots) {
+            if (s.getSlotNumber() == slotNumber) {
+                boolean ok = s.restoreVehicle(v, entryTimeMillis);
+                if (ok) {
+                    plateToSlot.put(v.getPlateNumber(), s);
+                }
+                return ok;
+            }
+        }
+        return false;
+    }
+
     public Vehicle removeVehicleOrThrow(String plateNumber) throws VehicleNotFoundException {
     if (plateNumber == null) throw new IllegalArgumentException("plate null");
     ParkingSlot slot = plateToSlot.get(plateNumber);
